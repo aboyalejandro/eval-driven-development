@@ -17,3 +17,6 @@ dependencies = [
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+py-modules = ["agent", "cli", "opik_client", "results", "build_dataset", "run_experiment", "inspect_experiment"]
+

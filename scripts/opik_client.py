@@ -18,8 +18,13 @@ class OpikClient:
     def __init__(self, base_url: str | None = None, api_key: str | None = None):
         self.base = (base_url or os.environ["OPIK_URL"]).rstrip("/")
         self.headers = {"Authorization": api_key or os.environ.get("OPIK_API_KEY", "")}
+        # Comet-hosted Opik requires workspace scoping for REST calls; self-hosted ignores it.
+        workspace = os.environ.get("OPIK_WORKSPACE")
+        if workspace:
+            self.headers["Comet-Workspace"] = workspace
 
     def _request(self, method: str, path: str, **kwargs) -> dict:
+        kwargs.setdefault("timeout", 30.0)
         r = httpx.request(method, f"{self.base}{path}", headers=self.headers, **kwargs)
         r.raise_for_status()
         return r.json() if r.content else {}

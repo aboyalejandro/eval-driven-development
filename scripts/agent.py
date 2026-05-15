@@ -4,15 +4,21 @@ The framework assumes the agent under test is reachable over HTTP. This adapter
 is a starting template: edit `arun()` if your agent's request/response shape
 differs from the default contract below.
 
-Default contract:
+Default contract (truly generic — nothing runtime-specific):
     POST {AGENT_ENDPOINT}
     Content-Type: application/x-www-form-urlencoded
-    body: message=<str>, session_id=<str>
+    body: message=<str>
     response: JSON with `content` field containing the assistant reply
 
-The agent is responsible for its own OTEL → Opik tracing. This adapter does
-not instrument the agent runtime; it only invokes the endpoint and relays the
-text response. See `PREREQUISITES.md` for the integration contract.
+The framework mints `self._session_id` on the AgentProxy for multi-turn scenarios.
+If your agent supports session continuity (Agno/AgentOS uses `session_id`, OpenAI
+Assistants uses `thread_id`, etc.), transmit it from `self._session_id` inside
+your customised arun(). Same goes for streaming control, auth schemes, structured
+context, and any other runtime-specific fields — adapt arun() in your fork.
+
+The agent is responsible for its own OTEL → Opik tracing. This adapter does not
+instrument the agent runtime; it only invokes the endpoint and relays the text
+response. See `PREREQUISITES.md` for the full integration contract.
 """
 
 import os
@@ -26,7 +32,7 @@ load_dotenv()
 
 AGENT_ENDPOINT = os.getenv("AGENT_ENDPOINT")
 AGENT_AUTH = os.getenv("AGENT_AUTH")  # optional, sent as Authorization header
-AGENT_NAME = os.getenv("AGENT_NAME", "agent")  # used in trace filter prefix
+AGENT_NAME = os.getenv("AGENT_NAME", "agent")  # informational only
 
 
 async def create_agent(
@@ -34,13 +40,7 @@ async def create_agent(
     run_id: str,
     context: dict | None = None,
 ):
-    """Return an object with `arun(message)` that calls the agent over HTTP.
-
-    Context: most agents have no structured context field. For this default
-    contract, context keys are folded into the message as a natural qualifier.
-    If your agent supports structured context (system metadata, dedicated
-    context tool, template variables), wire it in here instead.
-    """
+    """Return an object with `arun(message)` that calls the agent over HTTP."""
     if not AGENT_ENDPOINT:
         raise RuntimeError(
             "AGENT_ENDPOINT is not set. Configure it in .env (see .env.example)."
@@ -66,7 +66,7 @@ async def create_agent(
                 resp = await client.post(
                     AGENT_ENDPOINT,
                     headers=headers,
-                    data={"message": full_message, "session_id": self._session_id},
+                    data={"message": full_message},
                 )
                 resp.raise_for_status()
                 data = resp.json()
