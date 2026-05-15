@@ -24,3 +24,8 @@ Thumbs.db
 # The framework ships *.example.txt templates; copy and populate locally.
 scenarios.txt
 regressions.txt
+
+# Local working notes + per-agent scratchpads (not part of the framework)
+DEFERRED.md
+LEARNINGS.md
+_local/

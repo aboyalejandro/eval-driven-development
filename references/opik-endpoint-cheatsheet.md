@@ -15,8 +15,11 @@ Base path is always `/v1/private/...`. Auth is the Bearer/raw token in the
 |---|---|---|
 | GET | `/traces?project_name&filters&size` | Time-window + tag filter |
 | POST | `/traces/batch` | Body: `{trace_ids, tags_to_add}` — bulk tag |
-| GET | `/traces/{id}/feedback-scores` | Per-trace judge scores |
+| GET | `/traces/{id}` | Returns trace incl. embedded `feedback_scores` array |
 | GET | `/spans?project_name&trace_id` | Pull model id from first LLM span |
+
+> Opik 1.x exposed `/traces/{id}/feedback-scores` separately; 2.x embeds scores
+> on the trace itself. The legacy path now returns 405.
 
 ## Datasets
 
@@ -56,11 +59,23 @@ to the timeline view. Setting it after the fact requires a manual update.
 | Verb | Path | Notes |
 |---|---|---|
 | GET | `/automations/evaluators?size=500` | List rules; `code.schema[0].name` is the canonical schema name |
-| POST | `/automations/evaluators/run` | Body: `{project_id, trace_ids, rule_ids}` — async score writeback |
+| POST | `/automations/evaluators` | Create rule; type `llm_as_judge` or `user_defined_metric_python` |
+| DELETE | `/automations/evaluator-rules` (batch) | Delete by ids list |
+| GET | `/automations/evaluators/{id}/logs` | Per-rule execution logs — **first place to look when scores never land** |
+| POST | `/manual-evaluation/traces` | Body: `{project_id, entity_ids, rule_ids, entity_type: "trace"}` — async writeback |
 
-Triggered scores write to **trace-level** `feedback_scores`. They do *not*
-auto-propagate to experiment items — `run_experiment.py` polls them off
-the traces and copies them onto the items so both layers carry the data.
+> Opik 1.x triggered evaluation via `POST /automations/evaluators/run` with
+> `trace_ids`; 2.x uses `POST /manual-evaluation/traces` with `entity_ids`
+> + `entity_type`. The old path returns 405.
+
+Triggered scores write to **trace-level** `feedback_scores` (embedded on
+the trace, not a separate endpoint in 2.x). They do *not* auto-propagate
+to experiment items — `run_experiment.py` polls them off the traces and
+copies them onto the items so both layers carry the data.
+
+If scores never appear, fetch `/automations/evaluators/{id}/logs` — the
+most common cause is "API key not configured for LLM" when the judge
+model's provider isn't credentialed in the workspace.
 
 ## Reference URL patterns
 

@@ -26,7 +26,13 @@ class OpikClient:
     def _request(self, method: str, path: str, **kwargs) -> dict:
         kwargs.setdefault("timeout", 30.0)
         r = httpx.request(method, f"{self.base}{path}", headers=self.headers, **kwargs)
-        r.raise_for_status()
+        if r.status_code >= 400:
+            # Surface response body — Opik returns useful validation details here.
+            raise httpx.HTTPStatusError(
+                f"{r.status_code} {r.reason_phrase} on {method} {path}: {r.text[:400]}",
+                request=r.request,
+                response=r,
+            )
         return r.json() if r.content else {}
 
     # --- projects ---
@@ -78,8 +84,10 @@ class OpikClient:
         )
 
     def get_trace_scores(self, trace_id: str) -> list[dict]:
-        data = self._request("GET", f"/v1/private/traces/{trace_id}/feedback-scores")
-        return data.get("content", [])
+        # `/traces/{id}/feedback-scores` was removed in Opik 2.x — scores are now
+        # embedded on the trace itself under `feedback_scores`.
+        trace = self._request("GET", f"/v1/private/traces/{trace_id}")
+        return trace.get("feedback_scores") or []
 
     def get_spans(self, project: str, trace_id: str, size: int = 10) -> dict:
         """Used to sniff the model id from the first LLM span — handy as experiment metadata."""
@@ -99,13 +107,15 @@ class OpikClient:
     def trigger_evaluation(
         self, project_id: str, trace_ids: list[str], rule_ids: list[str]
     ) -> dict:
+        # Endpoint moved in Opik 2.x — was /automations/evaluators/run.
         return self._request(
             "POST",
-            "/v1/private/automations/evaluators/run",
+            "/v1/private/manual-evaluation/traces",
             json={
                 "project_id": project_id,
-                "trace_ids": trace_ids,
+                "entity_ids": trace_ids,
                 "rule_ids": rule_ids,
+                "entity_type": "trace",
             },
         )
 

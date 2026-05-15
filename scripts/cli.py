@@ -93,11 +93,8 @@ async def _run(
     timeout: int,
     flag_targets: set[str],
 ):
-    # 1. Point OTEL at the testing project. Tracer init happens in agent.py:create_agent.
-    os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"projectName={project}"
-    os.environ.setdefault(
-        "OTEL_EXPORTER_OTLP_ENDPOINT", os.environ["OPIK_OTLP_ENDPOINT"]
-    )
+    # The agent under test owns its own OTEL → Opik tracing (see PREREQUISITES.md).
+    # This process is just an HTTP client; we don't instrument it.
 
     run_id = uuid.uuid4().hex[:8]
     start = datetime.now(timezone.utc)
@@ -124,15 +121,23 @@ async def _run(
     log.info("flushing traces...")
     time.sleep(3)
 
-    # 4. Find this run's traces. Filter by agent name prefix.
+    # 4. Find this run's traces. With external HTTP agents the trace name is
+    # set by the agent runtime (not by us), so name-prefix filtering doesn't
+    # work — we rely on the time window + dedicated project (see PREREQUISITES).
     client = OpikClient()
     from_time = start.strftime("%Y-%m-%dT%H:%M:%S.000Z")
     traces = client.search_traces(project, from_time=from_time)
-    prefixes = (f"sim-{run_id}-", f"sim_{run_id}_")  # OTEL normalises dashes
-    trace_ids = [t["id"] for t in traces if t.get("name", "").startswith(prefixes)]
+    trace_ids = [t["id"] for t in traces]
     if not trace_ids:
-        console.print("[red]no traces found — check OTEL config[/red]")
+        console.print("[red]no traces found — verify agent is emitting to Opik[/red]")
         raise typer.Exit(1)
+    expected = sum(1 + len(sc.get("followups") or []) for sc in scenarios)
+    if len(trace_ids) != expected:
+        log.warning(
+            "trace count mismatch: expected %d, got %d (concurrent traffic in project?)",
+            expected,
+            len(trace_ids),
+        )
     log.info("found %d traces", len(trace_ids))
 
     # 5. Tag with branch + run_id for cross-branch comparison in the Opik UI.
@@ -174,9 +179,9 @@ async def _run(
 
 @app.command()
 def check():
-    """Verify env vars + Opik reachable. Run before first invocation."""
+    """Verify env vars + Opik reachable + agent reachable. Run before first invocation."""
     load_dotenv()
-    required = ["OPIK_URL", "OPIK_API_KEY", "OPIK_OTLP_ENDPOINT"]
+    required = ["OPIK_URL", "OPIK_API_KEY", "OPIK_OTLP_ENDPOINT", "AGENT_ENDPOINT"]
     errors = []
     for v in required:
         ok = bool(os.environ.get(v))
@@ -191,6 +196,17 @@ def check():
         except Exception as e:
             console.print(f"  [red]✗[/] Opik: {e}")
             errors.append("OPIK")
+
+        try:
+            import httpx as _httpx
+            url = os.environ["AGENT_ENDPOINT"]
+            # Use the base host — HEAD on the run endpoint may not be supported.
+            base = url.split("/agents/")[0] if "/agents/" in url else url
+            _httpx.get(base, timeout=5.0)
+            console.print("  [green]✓[/] Agent endpoint reachable")
+        except Exception as e:
+            console.print(f"  [red]✗[/] AGENT_ENDPOINT unreachable: {e}")
+            errors.append("AGENT_ENDPOINT")
 
     if errors:
         console.print(f"\n[red]failed: {', '.join(errors)}[/red]")
