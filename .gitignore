@@ -28,4 +28,5 @@ regressions.txt
 # Local working notes + per-agent scratchpads (not part of the framework)
 DEFERRED.md
 LEARNINGS.md
+RESULTS.md
 _local/
