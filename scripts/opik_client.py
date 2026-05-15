@@ -148,7 +148,13 @@ class OpikClient:
                 return d["id"]
         return None
 
-    def create_dataset(self, name: str, description: str | None = None) -> str:
+    def create_dataset(
+        self,
+        name: str,
+        description: str | None = None,
+        project_name: str | None = None,
+        tags: list[str] | None = None,
+    ) -> str:
         """Idempotent — returns id of existing dataset if name already taken."""
         existing = self.get_dataset_id(name)
         if existing:
@@ -156,6 +162,10 @@ class OpikClient:
         body = {"id": str(uuid.uuid7()), "name": name}
         if description:
             body["description"] = description
+        if project_name:
+            body["project_name"] = project_name
+        if tags:
+            body["tags"] = tags
         self._request("POST", "/v1/private/datasets", json=body)
         return body["id"]
 

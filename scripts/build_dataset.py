@@ -159,7 +159,12 @@ def main(
         console.print(json.dumps(sample, indent=2, default=str))
         return
 
-    client.create_dataset(dataset_name, description=description)
+    client.create_dataset(
+        dataset_name,
+        description=description,
+        project_name=project,
+        tags=[branch_tag],
+    )
     client.insert_dataset_items(dataset_name, items)
     dataset_id = client.get_dataset_id(dataset_name)
     base = os.environ.get("OPIK_URL", "").rstrip("/")
