@@ -175,7 +175,29 @@ edd-inspect --experiment-name <name-from-previous-step>
 
 ## Anti-patterns
 
-- **Skipping layer 1.** Going straight to a dataset before the judge fires cleanly on a few traces means you'll find out the judge is broken at experiment scale.
+- **Skipping setup.** Going straight to a dataset before the judge fires cleanly on a few traces means you'll find out the judge is broken at experiment scale.
 - **Rewriting the dataset in place.** New shape = new version. Comparisons across versions are noise.
 - **Running an experiment without an evaluator.** "I want a scoreboard" is not an evaluator — pick the dimension first.
 - **Optimization timelines spanning unrelated topics.** Per-topic optimizations keep the UI legible.
+
+## Forking — what lives in `_local/`
+
+The framework core (`scripts/`) is agnostic. Everything specific to your agent
+goes in `_local/` at the repo root — gitignored by default. Forkers should create
+and version these files themselves (in their fork or working branch):
+
+| File | Purpose |
+|---|---|
+| `_local/create_evaluators.py` | Create LLM-as-judge rules in your Opik project. Define rubrics from your agent's promise inventory (see `references/agent-analysis.md`). Re-run whenever rubrics change. |
+| `_local/enrich_traces.py` | Normalize trace shape for your judges. Walk spans, extract tool names/outputs, patch `metadata.*`. Run between `edd run` and `edd score`. Convention-specific: OpenInference, LangChain, raw OTEL each differ. |
+| `_local/openinference_extractor.py` | Custom `--extractor` for `edd-build` if your runtime uses OpenInference trace paths (`input["input.value"]` instead of `input.user_message`). |
+| `scenarios.txt` (root) | Diff-specific scenarios for the current session. Regenerated per branch. |
+| `regressions.txt` (root) | Stable baseline scenarios covering the agent's core promises. Commit this in your fork — it persists across sessions. |
+
+**Guidance for `_local/` files:**
+
+- `create_evaluators.py`: One judge per promise from your agent's inventory. Use the scoring convention: 1 = explicitly verified correct, 0 = failed OR not applicable (not tested). Document the variable paths your judges use — they depend on your trace shape.
+- `enrich_traces.py`: Run after `edd run`, before `edd score`. Keep it thin — extract only what your judges need. If your judges need tool outputs for grounding verification, extract them here.
+- **Never commit `_local/` contents to the framework repo.** They encode your agent's specifics. Other users need different rubrics, enrichment, and extractors.
+
+To start fresh with a new agent: copy the `.example.txt` templates, run `references/agent-analysis.md` extraction, then derive `_local/create_evaluators.py` from the promise inventory.

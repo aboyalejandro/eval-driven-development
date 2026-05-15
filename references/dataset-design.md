@@ -53,19 +53,43 @@ Inspect the two sample items printed. If `user_message` and `assistant_response`
   earns a new dataset, not an in-place rewrite. Experiments comparing
   prompt iterations need a frozen dataset to be meaningful.
 
-## Coverage planning
+## Scenario design: adversarial but realistic
+
+The dataset should actively try to make the agent fail against its own prompt,
+its skill contracts, and its evaluators — while staying within the range of
+things a real user would actually ask.
+
+**What this means in practice:**
+
+- Don't default to the most basic, polished version of each question ("How are
+  my articles doing?" → the agent handles this easily). Push harder: ask with
+  ambiguous phrasing, incomplete context, or in a multi-turn session where the
+  context shifts mid-conversation.
+- Don't manufacture impossible edge cases either. "Analyze my articles from
+  the year 1247" is a waste of a dataset slot — no real user asks this.
+- Use the tension between the agent's stated capabilities and realistic user
+  confusion. A user might ask "what are my top posts?" instead of the exact
+  trigger phrase — does the skill still activate?
+- Include scenarios where the agent SHOULD fail gracefully: out-of-scope asks,
+  data that doesn't exist, ambiguous requests that need clarification. These
+  validate the agent's guardrails, not just its happy-path behavior.
+- Multi-turn sequences expose more failure modes than isolated questions.
+  A follow-up that assumes context from the previous turn will break agents
+  with weak session handling.
+
+**Coverage planning**
 
 Aim for ~100 items per dataset once the recipe stabilises. Default split,
 tunable per topic:
 
 | Bucket | % | Purpose |
 |---|---|---|
-| Happy path | 40 | establishes baseline pass rate |
-| Wording variants | 20 | same intent, different phrasing — robustness |
-| Edge cases | 15 | empty data, oversized inputs, malformed context |
-| Conflicts | 10 | contradictory instructions vs branch prompt — priority |
+| Happy path | 30 | establishes baseline pass rate — but write these as a real user would, not a test engineer |
+| Wording variants | 20 | same intent, different phrasing — robustness against brittle trigger matching |
+| Edge cases | 15 | empty data, missing context, nonexistent content — tests graceful degradation |
+| Adversarial | 15 | questions that should confuse the agent: ambiguous scope, conflicting instructions, partial triggers |
+| Multi-turn | 10 | follow-ups that depend on prior context — exposes session memory and context handling |
 | Negatives | 10 | out-of-scope asks → graceful refusal |
-| Multilingual / context | 5 | extra locales or context injections relevant to the judge |
 
 Start at 10–20 items for the first dry run. Ramp once the recipe works.
 
