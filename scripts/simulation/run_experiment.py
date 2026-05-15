@@ -32,6 +32,7 @@ from dotenv import load_dotenv
 from rich.console import Console
 
 from shared.opik_client import OpikClient
+from setup.results import _latest_per_judge
 
 console = Console()
 app = typer.Typer(add_completion=False)
@@ -57,12 +58,24 @@ def _poll_scores(
     trace_ids: list[str],
     evaluator_names: set[str],
     timeout: int,
+    triggered_after: str | None = None,
 ) -> dict[str, list[dict]]:
+    """Same triggered_after logic as setup.results.poll_scores — prevents
+    stale pre-enrichment scores from masking the fresh experiment trigger."""
+    if triggered_after:
+        time.sleep(12)
     deadline = time.time() + timeout
     scores: dict[str, list[dict]] = {tid: [] for tid in trace_ids}
     while time.time() < deadline:
-        scores = {tid: client.get_trace_scores(tid) for tid in trace_ids}
-        landed = {s.get("name") for tid in trace_ids for s in scores[tid]}
+        raw = {tid: client.get_trace_scores(tid) for tid in trace_ids}
+        scores = {tid: _latest_per_judge(v) for tid, v in raw.items()}
+        if triggered_after:
+            landed = {
+                s.get("name") for tid in trace_ids for s in scores[tid]
+                if s.get("created_at", "") >= triggered_after
+            }
+        else:
+            landed = {s.get("name") for tid in trace_ids for s in scores[tid]}
         if evaluator_names <= landed:
             return scores
         time.sleep(5)
@@ -172,10 +185,11 @@ def main(
         )
         console.print(f"optimization id={opt_id}")
 
+    triggered_after = datetime.now(timezone.utc).isoformat()
     client.trigger_evaluation(project_id, trace_ids, [j["id"] for j in judges])
     console.print(f"triggered {len(judges)} judges on {len(trace_ids)} traces")
 
-    scores_by_trace = _poll_scores(client, trace_ids, set(found_names), score_timeout)
+    scores_by_trace = _poll_scores(client, trace_ids, set(found_names), score_timeout, triggered_after)
     landed = sum(
         1 for tid in trace_ids
         if any(s.get("name") in found_names for s in scores_by_trace.get(tid, []))
