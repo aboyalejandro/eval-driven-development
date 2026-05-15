@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+"""Build an Opik dataset from sim traces tagged by `cli.py run`.
+
+The sim CLI tags every trace it emits with `sim-<branch>`. This script picks
+those traces out of a project, extracts an item per trace, and upserts them
+into a named dataset. The dataset is the durable artifact every later
+experiment scores against.
+
+Default extractor reads `input.user_message` + `output.assistant_response`
+off the trace. Replace it via `--extractor module:function` for runtimes
+that shape their spans differently — the callable receives the raw trace
+dict and returns the item dict (or `None` to skip).
+
+    python build_dataset.py \
+        --project my-project \
+        --dataset-name edd-recovery-v1 \
+        --branch-tag sim-feat/recovery \
+        --from "2026-05-14T00:00:00Z" \
+        [--extractor my_pkg.extractors:recovery] \
+        [--dry-run]
+"""
+
+import importlib
+import json
+import os
+import sys
+import uuid
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any, Callable
+
+import typer
+from dotenv import load_dotenv
+from rich.console import Console
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from opik_client import OpikClient  # noqa: E402
+
+console = Console()
+app = typer.Typer(add_completion=False)
+
+
+def _default_extractor(trace: dict) -> dict | None:
+    """Pull user_message + assistant_response from canonical span fields.
+
+    Trace shape Opik exposes:
+      input  = {"user_message": "...", ...} OR a plain string
+      output = {"assistant_response": "...", ...} OR a plain string
+
+    Caller can swap this for a runtime-specific function via --extractor.
+    """
+    inp = trace.get("input") or {}
+    out = trace.get("output") or {}
+    if isinstance(inp, dict):
+        user_message = inp.get("user_message") or inp.get("message") or ""
+    else:
+        user_message = str(inp)
+    if isinstance(out, dict):
+        assistant_response = out.get("assistant_response") or out.get("response") or ""
+    else:
+        assistant_response = str(out)
+    if not user_message or not assistant_response:
+        return None
+    item: dict[str, Any] = {
+        "user_message": user_message,
+        "assistant_response": assistant_response,
+    }
+    metadata = trace.get("metadata") or {}
+    if isinstance(metadata, dict) and metadata:
+        item["trace_metadata"] = metadata
+    return item
+
+
+def _load_extractor(spec: str | None) -> Callable[[dict], dict | None]:
+    if not spec:
+        return _default_extractor
+    if ":" not in spec:
+        raise typer.BadParameter("--extractor must be 'module.path:function'")
+    mod_path, func = spec.split(":", 1)
+    module = importlib.import_module(mod_path)
+    return getattr(module, func)
+
+
+def _parse_from(value: str | None, default_hours: int = 6) -> str:
+    if not value:
+        return (datetime.now(timezone.utc) - timedelta(hours=default_hours)).strftime(
+            "%Y-%m-%dT%H:%M:%S.000Z"
+        )
+    # accept ISO-8601 already
+    if value.endswith("Z"):
+        return value
+    return value
+
+
+def _filter_traces(traces: list[dict], branch_tag: str) -> list[dict]:
+    return [t for t in traces if branch_tag in (t.get("tags") or [])]
+
+
+@app.command()
+def main(
+    project: str = typer.Option(..., "--project", help="Opik project name."),
+    dataset_name: str = typer.Option(
+        ..., "--dataset-name", help="Destination dataset. Created if missing."
+    ),
+    branch_tag: str = typer.Option(
+        ...,
+        "--branch-tag",
+        help="Trace tag to filter on. Set by cli.py as `sim-<branch>`.",
+    ),
+    from_time: str | None = typer.Option(
+        None,
+        "--from",
+        help="ISO time lower bound. Defaults to 6h ago.",
+    ),
+    extractor: str | None = typer.Option(
+        None,
+        "--extractor",
+        help="Dotted path `module:function` returning an item dict (or None) per trace.",
+    ),
+    description: str | None = typer.Option(
+        None, "--description", help="Set on dataset creation only."
+    ),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+):
+    load_dotenv()
+    extractor_fn = _load_extractor(extractor)
+    from_iso = _parse_from(from_time)
+
+    client = OpikClient()
+    traces = client.search_traces(project, from_time=from_iso)
+    matched = _filter_traces(traces, branch_tag)
+    console.print(
+        f"[bold]{len(matched)}[/bold] traces match tag={branch_tag} "
+        f"from={from_iso} (of {len(traces)} scanned)"
+    )
+    if not matched:
+        raise typer.Exit(code=1)
+
+    items: list[dict] = []
+    dropped = 0
+    for tr in matched:
+        item = extractor_fn(tr)
+        if not item:
+            dropped += 1
+            continue
+        item.setdefault("id", str(uuid.uuid4()))
+        item["source_trace_id"] = tr["id"]
+        items.append(item)
+    console.print(f"extracted {len(items)} items, dropped {dropped}")
+
+    if dry_run:
+        sample = items[:2]
+        console.print(json.dumps(sample, indent=2, default=str))
+        return
+
+    client.create_dataset(dataset_name, description=description)
+    client.insert_dataset_items(dataset_name, items)
+    dataset_id = client.get_dataset_id(dataset_name)
+    base = os.environ.get("OPIK_URL", "").rstrip("/")
+    console.print(
+        f"[green]wrote {len(items)} items[/green] → dataset={dataset_name} (id={dataset_id})"
+    )
+    if base:
+        console.print(f"  {base}/datasets/{dataset_id}")
+
+
+if __name__ == "__main__":
+    app()

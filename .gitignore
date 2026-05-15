@@ -1,0 +1,26 @@
+# Secrets
+.env
+.env.local
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Per-agent scenario artifacts — version these in your fork after agent-analysis.
+# The framework ships *.example.txt templates; copy and populate locally.
+scenarios.txt
+regressions.txt

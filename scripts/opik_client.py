@@ -1,0 +1,260 @@
+"""Opik REST wrapper.
+
+Surface kept narrow on purpose — only the endpoints the EDD scripts use:
+- traces: search, batch tag, feedback scores, spans (for run-time model lookup)
+- evaluators: list automation rules, trigger manual run
+- datasets: resolve id, insert items, page items joined with experiment outputs
+- experiments: create (pre-minted id), add items
+- optimizations: find, upsert (group experiments under one timeline)
+"""
+
+import os
+import uuid
+
+import httpx
+
+
+class OpikClient:
+    def __init__(self, base_url: str | None = None, api_key: str | None = None):
+        self.base = (base_url or os.environ["OPIK_URL"]).rstrip("/")
+        self.headers = {"Authorization": api_key or os.environ.get("OPIK_API_KEY", "")}
+
+    def _request(self, method: str, path: str, **kwargs) -> dict:
+        r = httpx.request(method, f"{self.base}{path}", headers=self.headers, **kwargs)
+        r.raise_for_status()
+        return r.json() if r.content else {}
+
+    # --- projects ---
+
+    def get_project_id(self, name: str) -> str:
+        data = self._request("GET", "/v1/private/projects", params={"name": name})
+        for p in data.get("content", []):
+            if p["name"] == name:
+                return p["id"]
+        raise ValueError(f"project not found: {name}")
+
+    # --- traces ---
+
+    def search_traces(
+        self,
+        project: str,
+        from_time: str,
+        extra_filters: list[dict] | None = None,
+    ) -> list[dict]:
+        """Time-window trace search. extra_filters appends to the start_time filter."""
+        import json as _json
+
+        filters = [
+            {"field": "start_time", "operator": ">=", "value": from_time},
+            *(extra_filters or []),
+        ]
+        data = self._request(
+            "GET",
+            "/v1/private/traces",
+            params={
+                "project_name": project,
+                "filters": _json.dumps(filters),
+                "size": 500,
+            },
+        )
+        return data.get("content", [])
+
+    def batch_update_traces(
+        self, trace_ids: list[str], project: str, tags_to_add: list[str]
+    ) -> None:
+        self._request(
+            "POST",
+            "/v1/private/traces/batch",
+            json={
+                "project_name": project,
+                "trace_ids": trace_ids,
+                "tags_to_add": tags_to_add,
+            },
+        )
+
+    def get_trace_scores(self, trace_id: str) -> list[dict]:
+        data = self._request("GET", f"/v1/private/traces/{trace_id}/feedback-scores")
+        return data.get("content", [])
+
+    def get_spans(self, project: str, trace_id: str, size: int = 10) -> dict:
+        """Used to sniff the model id from the first LLM span — handy as experiment metadata."""
+        return self._request(
+            "GET",
+            "/v1/private/spans",
+            params={"project_name": project, "trace_id": trace_id, "size": size},
+        )
+
+    # --- evaluators (automation rules) ---
+
+    def get_evaluators(self) -> dict:
+        return self._request(
+            "GET", "/v1/private/automations/evaluators", params={"size": 500}
+        )
+
+    def trigger_evaluation(
+        self, project_id: str, trace_ids: list[str], rule_ids: list[str]
+    ) -> dict:
+        return self._request(
+            "POST",
+            "/v1/private/automations/evaluators/run",
+            json={
+                "project_id": project_id,
+                "trace_ids": trace_ids,
+                "rule_ids": rule_ids,
+            },
+        )
+
+    # --- datasets ---
+
+    def get_dataset_id(self, name: str) -> str | None:
+        data = self._request(
+            "GET", "/v1/private/datasets", params={"name": name, "size": 50}
+        )
+        for d in data.get("content", []):
+            if d["name"] == name:
+                return d["id"]
+        return None
+
+    def create_dataset(self, name: str, description: str | None = None) -> str:
+        """Idempotent — returns id of existing dataset if name already taken."""
+        existing = self.get_dataset_id(name)
+        if existing:
+            return existing
+        body = {"id": str(uuid.uuid4()), "name": name}
+        if description:
+            body["description"] = description
+        self._request("POST", "/v1/private/datasets", json=body)
+        return body["id"]
+
+    def insert_dataset_items(self, dataset_name: str, items: list[dict]) -> None:
+        """Upsert items by `id` (caller mints one per item)."""
+        self._request(
+            "PUT",
+            "/v1/private/datasets/items",
+            json={"dataset_name": dataset_name, "items": items},
+        )
+
+    def stream_dataset_items(self, dataset_id: str, max_pages: int = 50) -> list[dict]:
+        """Page raw dataset items (no experiment join). Use before any experiment exists."""
+        out: list[dict] = []
+        for page in range(1, max_pages + 1):
+            data = self._request(
+                "GET",
+                f"/v1/private/datasets/{dataset_id}/items",
+                params={"page": page, "size": 100},
+            )
+            content = data.get("content", [])
+            if not content:
+                break
+            out.extend(content)
+            if len(content) < 100:
+                break
+        return out
+
+    def stream_dataset_items_with_experiment(
+        self, dataset_id: str, experiment_id: str, max_pages: int = 50
+    ) -> list[dict]:
+        """Page items joined with one experiment's outputs/scores. Cap pages to bound cost."""
+        out: list[dict] = []
+        for page in range(1, max_pages + 1):
+            data = self._request(
+                "GET",
+                f"/v1/private/datasets/{dataset_id}/items/experiments/items",
+                params={
+                    "experiment_ids": f'["{experiment_id}"]',
+                    "page": page,
+                    "size": 100,
+                },
+            )
+            content = data.get("content", [])
+            if not content:
+                break
+            out.extend(content)
+            if len(content) < 100:
+                break
+        return out
+
+    # --- experiments ---
+
+    def create_experiment(
+        self,
+        dataset_name: str,
+        name: str,
+        experiment_id: str,
+        project_id: str,
+        optimization_id: str | None = None,
+        type_: str = "regular",
+        status: str = "running",
+        metadata: dict | None = None,
+        tags: list[str] | None = None,
+    ) -> None:
+        """Pre-mint `experiment_id` so bulk item endpoint can target it. Body is 201-no-content."""
+        body: dict = {
+            "id": experiment_id,
+            "dataset_name": dataset_name,
+            "name": name,
+            "type": type_,
+            "status": status,
+            "project_id": project_id,
+        }
+        if optimization_id:
+            body["optimization_id"] = optimization_id
+        if metadata:
+            body["metadata"] = metadata
+        if tags:
+            body["tags"] = tags
+        self._request("POST", "/v1/private/experiments", json=body)
+
+    def create_experiment_items(self, experiment_id: str, items: list[dict]) -> None:
+        """Items carry `dataset_item_id`, `trace_id`, `input`, `output`, `feedback_scores`."""
+        self._request(
+            "POST",
+            "/v1/private/experiments/items/bulk",
+            json={"experiment_id": experiment_id, "items": items},
+        )
+
+    def get_experiment(self, experiment_id: str) -> dict:
+        return self._request("GET", f"/v1/private/experiments/{experiment_id}")
+
+    def find_experiment_by_name(self, name: str) -> dict | None:
+        data = self._request(
+            "GET", "/v1/private/experiments", params={"name": name, "size": 50}
+        )
+        for e in data.get("content", []):
+            if e["name"] == name:
+                return e
+        return None
+
+    # --- optimizations ---
+
+    def find_optimization(self, name: str, dataset_id: str) -> dict | None:
+        data = self._request(
+            "GET",
+            "/v1/private/optimizations",
+            params={"name": name, "dataset_id": dataset_id, "size": 50},
+        )
+        for o in data.get("content", []):
+            if o["name"] == name:
+                return o
+        return None
+
+    def upsert_optimization(
+        self,
+        dataset_name: str,
+        objective_name: str,
+        status: str = "running",
+        optimization_id: str | None = None,
+        name: str | None = None,
+    ) -> str:
+        """Returns the optimization id. If optimization_id omitted, server assigns one."""
+        body: dict = {
+            "dataset_name": dataset_name,
+            "objective_name": objective_name,
+            "status": status,
+        }
+        if optimization_id:
+            body["id"] = optimization_id
+        if name:
+            body["name"] = name
+        self._request("PUT", "/v1/private/optimizations", json=body)
+        return optimization_id or body.get("id", "")
