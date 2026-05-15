@@ -80,7 +80,7 @@ def _resolve_optimization(
     existing = client.find_optimization(name, dataset_id)
     if existing:
         return existing["id"]
-    opt_id = str(uuid.uuid4())
+    opt_id = str(uuid.uuid7())
     client.upsert_optimization(
         dataset_name=dataset_name,
         objective_name=objective,
@@ -197,7 +197,7 @@ def main(
             metadata["model"] = sp["model"]
             break
 
-    exp_id = str(uuid.uuid4())
+    exp_id = str(uuid.uuid7())
     client.create_experiment(
         dataset_name=dataset_name,
         name=exp_name,
@@ -209,7 +209,7 @@ def main(
     )
     bulk_items = [
         {
-            "id": str(uuid.uuid4()),
+            "id": str(uuid.uuid7()),
             "experiment_id": exp_id,
             "dataset_item_id": (it.get("data") or it).get("id") or it.get("id"),
             "trace_id": (it.get("data") or it).get("source_trace_id"),

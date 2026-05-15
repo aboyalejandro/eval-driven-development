@@ -21,6 +21,25 @@ context injected into the prompt), propagate it through the trace and copy
 the relevant pieces in via a custom `--extractor`. The default extractor
 keeps the contract minimal on purpose — extend, don't refactor.
 
+## Trace shape and the extractor
+
+The default extractor reads `trace.input.user_message` / `trace.output.assistant_response`. Most modern OTEL runtimes (Agno, LangChain, LlamaIndex via OpenInference) emit different keys:
+
+```
+trace.input["input.value"]   → user message
+trace.output["output.value"] → assistant response
+```
+
+If you skip `--extractor` with an OpenInference-instrumented agent, the default extractor returns `None` for every item and the dataset ends up empty. Always do a `--dry-run` first to verify items extract cleanly:
+
+```bash
+python scripts/build_dataset.py ... --dry-run
+```
+
+Inspect the two sample items printed. If `user_message` and `assistant_response` are empty strings, you need a custom extractor. See `references/trace-inspection.md` for the pattern; the extractor is a plain Python callable — one function in a `.py` file, importable from the repo root.
+
+`trace.metadata` (enriched fields like `tools_called`, `tool_count`) is copied into `item.trace_metadata` automatically when present. Judges in experiments read `tools_called` from the original trace via `metadata.tools_called` variable path — the dataset item carries it for reference, not for judge resolution.
+
 ## Naming convention
 
 `<project-slug>-<topic>-<version>` — e.g. `edd-recovery-v1`, `edd-format-v3`.

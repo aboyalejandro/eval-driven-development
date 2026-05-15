@@ -153,18 +153,26 @@ class OpikClient:
         existing = self.get_dataset_id(name)
         if existing:
             return existing
-        body = {"id": str(uuid.uuid4()), "name": name}
+        body = {"id": str(uuid.uuid7()), "name": name}
         if description:
             body["description"] = description
         self._request("POST", "/v1/private/datasets", json=body)
         return body["id"]
 
     def insert_dataset_items(self, dataset_name: str, items: list[dict]) -> None:
-        """Upsert items by `id` (caller mints one per item)."""
+        """Upsert items by `id` (caller mints one per item).
+
+        Opik 2.x shape: top-level `id` + `source`; all item fields nested under `data`.
+        """
+        wrapped = []
+        for it in items:
+            it = dict(it)
+            item_id = it.pop("id", None) or str(uuid.uuid7())
+            wrapped.append({"id": item_id, "source": "manual", "data": it})
         self._request(
             "PUT",
             "/v1/private/datasets/items",
-            json={"dataset_name": dataset_name, "items": items},
+            json={"dataset_name": dataset_name, "items": wrapped},
         )
 
     def stream_dataset_items(self, dataset_id: str, max_pages: int = 50) -> list[dict]:

@@ -78,6 +78,11 @@ def _load_extractor(spec: str | None) -> Callable[[dict], dict | None]:
     if ":" not in spec:
         raise typer.BadParameter("--extractor must be 'module.path:function'")
     mod_path, func = spec.split(":", 1)
+    # Prepend CWD so callers can reference modules relative to where they run
+    # the script (e.g. `_local.openinference_extractor` from repo root).
+    cwd = str(Path.cwd())
+    if cwd not in sys.path:
+        sys.path.insert(0, cwd)
     module = importlib.import_module(mod_path)
     return getattr(module, func)
 
@@ -144,7 +149,7 @@ def main(
         if not item:
             dropped += 1
             continue
-        item.setdefault("id", str(uuid.uuid4()))
+        item.setdefault("id", str(uuid.uuid7()))
         item["source_trace_id"] = tr["id"]
         items.append(item)
     console.print(f"extracted {len(items)} items, dropped {dropped}")
