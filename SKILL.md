@@ -1,17 +1,20 @@
 ---
 name: eval-driven-development
-description: End-to-end eval loop for LLM agents — run scenarios through the real harness, route traces to Opik, score with judges, then optionally build a durable dataset, run experiments under an optimization timeline, and compare iterations. Use after any change to prompts, tools, skills, or model routing.
+description: Eval loop for LLM agents with three modes — (1) quick trace analysis with no UI artifacts, (2) full dataset + experiment in Opik, (3) targeted optimization run against a specific evaluator. Ask the user for mode (1/2/3) and aggression level (1/2/3) before starting. Use after any change to prompts, tools, skills, or model routing.
 user-invocable: true
 ---
 
 # Eval-Driven Development
 
-Two layers of feedback over the same trace surface:
+Three modes, same trace surface:
 
-1. **Quick signal** — simulate scenarios, fire judges, read the score table. Minutes.
-2. **Durable signal** — distill the sim traces into a dataset, run experiments against it, compare iterations on an optimization timeline. Days to weeks.
+**Mode 1 — Quick trace analysis.** Simulate scenarios, read trace outputs inline. No Opik UI artifacts, no evaluators fired. Best for fast iteration loops where you want Claude Code to analyze what the agent actually did.
 
-Layer 1 is for the inner loop while you tweak. Layer 2 is for the outer loop where iterations need to be comparable across time, people, and prompt versions. They share the trace + judge layer; layer 2 just lifts the same scores into a stable artifact.
+**Mode 2 — Dataset + experiment.** Full inner loop (score traces with judges) then outer loop (build dataset, run experiment, inspect in Opik UI). Best when you need a durable, comparable record across time or people.
+
+**Mode 3 — Optimization run.** Target a single evaluator on a specific prompt change. Runs Opik's optimization studio, freezing the changed section and comparing variants on the same timeline. Best for deliberate prompt engineering with a measurable objective.
+
+Each mode supports three aggression levels — see the **Aggression levels** section.
 
 For rationale see `README.md`. Mid-loop references:
 
@@ -27,7 +30,51 @@ For rationale see `README.md`. Mid-loop references:
 
 After changes to prompts, tool surface, skills, model routing, or memory injection. Skip for pure UI, refactors that don't touch prompts/tools, or bug fixes with a reproducing unit test.
 
-## Setup — Simulate + score
+## Start here — ask the user
+
+**Before executing any commands, ask:**
+
+1. **Mode** — which mode do you want to run?
+   - `1` — Quick trace analysis (no Opik UI, Claude Code reads traces inline)
+   - `2` — Dataset + experiment (full inner + outer loop, results in Opik UI)
+   - `3` — Optimization run (targeted prompt change → optimization studio)
+
+2. **Aggression level** — how hard should the scenarios push the agent?
+   - `1` — Harness validation: normal user flows, exact trigger phrases, happy paths
+   - `2` — Mixed: level 1 + edge cases (empty results, adjacent intents, partial triggers)
+   - `3` — Adversarial: mostly edge cases designed to surface harness failures
+
+The mode determines which phase sequence to follow below. The aggression level feeds into scenario generation — apply it when drafting `scenarios.txt` or extending `regressions.txt`.
+
+## Mode 1 — Quick trace analysis
+
+**No Opik UI. No evaluators. Claude Code reads traces directly.**
+
+Use when you want fast signal on what the agent actually did — trace inputs, outputs, tool calls — without the overhead of scoring infrastructure.
+
+1. Generate scenarios at the chosen aggression level (see below) and write to `scenarios.txt`.
+2. Run:
+   ```bash
+   edd run scenarios.txt   # emit + tag, no judging
+   ```
+3. Fetch and inspect the traces inline:
+   ```python
+   import sys; sys.path.insert(0, 'scripts')
+   from dotenv import load_dotenv; load_dotenv('.env')
+   from shared.opik_client import OpikClient
+   c = OpikClient()
+   traces = c.search_traces(project, from_time='<since>')
+   for t in traces:
+       print(t['id'][:8], (t.get('input') or {}).get('input.value', '')[:80])
+       print(' ->', (t.get('output') or {}).get('output.value', '')[:160])
+       meta = t.get('metadata') or {}
+       print('  tools:', meta.get('tools_called', []))
+   ```
+4. Report findings directly in the conversation — what the agent did, what it missed, what looks off. No dataset needed.
+
+**Stop here** unless you need a durable artifact or targeted experiment.
+
+## Setup — Simulate + score (Mode 2, Phase 1)
 
 1. **Pick scenarios** that exercise the surfaces the diff touches — one per intent. Keep under 10 for fast feedback.
 2. **Pick judges** that should have an opinion. Skip irrelevant ones — they drown signal with neutral 0.5 scores.
@@ -52,7 +99,7 @@ After changes to prompts, tool surface, skills, model routing, or memory injecti
 
 This loop is enough for most branch-level work.
 
-## Simulation — Dataset + experiment
+## Simulation — Dataset + experiment (Mode 2, Phase 2)
 
 Use when you want the score to outlive the branch:
 
@@ -120,6 +167,61 @@ Prints a per-evaluator digest + failures below threshold with trace links. Use `
 - **flaky / model-bound** → tag and skip
 
 Two *prompt iterations* on the same red judge = stop tweaking the prompt, widen the search. See `references/failure-modes.md` for the distinction between prompt iterations and re-runs of the same trace (judge noise).
+
+## Mode 3 — Optimization run
+
+**Targeted prompt change → single evaluator → Opik optimization studio.**
+
+Use when you know which dimension is failing and you want to iterate on the fix with a measurable, comparable timeline. The difference from Mode 2: you pick one evaluator to anchor the optimization, make a focused change, and let the studio show the delta.
+
+1. **Identify the dimension** — one failing evaluator, one prompt section to change.
+2. **Make the change** in the agent repo (skill file, system prompt section, tool description).
+3. **Generate scenarios** focused on that dimension at the chosen aggression level. Write to `scenarios.txt`.
+4. **Run the inner loop** to verify the change moves the needle before committing to an experiment:
+   ```bash
+   edd run scenarios.txt
+   python _local/enrich_traces.py --since-minutes 5
+   edd score --since 10 --evaluators "<target-evaluator>"
+   ```
+5. **Build dataset and run experiment** under an optimization name so baseline and post-change land on the same timeline:
+   ```bash
+   edd-build --project <p> --dataset-name <p>-<topic>-v<N> \
+     --branch-tag sim-$(git rev-parse --abbrev-ref HEAD)
+   edd-run --project <p> --dataset-name <p>-<topic>-v<N> \
+     --evaluator "<target-evaluator>" \
+     --branch-tag sim-$(git rev-parse --abbrev-ref HEAD) \
+     --optimization-name <topic>-baseline-vs-fix \
+     --experiment-name <topic>-post-fix
+   ```
+6. **Finalize** when the comparison run is the last one:
+   ```bash
+   edd-run ... --optimization-name <topic>-baseline-vs-fix --finalize-optimization
+   ```
+7. Inspect the optimization timeline in the Opik UI — score delta is the signal.
+
+## Aggression levels
+
+Apply when generating `scenarios.txt` from the promise inventory (`references/agent-analysis.md`). The level determines how hard scenarios push the agent against its own harness, heuristics, and evaluators.
+
+### Level 1 — Harness validation
+
+Normal user flows. Exact trigger phrases from the skill definitions. Happy paths where data exists and the agent should succeed cleanly. Tests that the core harness works — right skill fires, tools are called, output structure is correct.
+
+*Example for analyze-articles:* "How are my recent articles performing on [publication-url]?"
+
+### Level 2 — Mixed (level 1 + edge cases)
+
+Level 1 scenarios plus: partial trigger phrases, adjacent intents that *might* activate the wrong skill, multi-turn sessions where context shifts mid-way, requests where the tool returns data but the agent might format it incompletely, scenarios where one tool fires but a dependent tool is skipped.
+
+*Example additions:* "What about my writing — what's landing?" (ambiguous trigger), "Which one did best, and what about the format?" (multi-turn, shifts skill mid-session)
+
+### Level 3 — Adversarial
+
+Mostly edge cases designed to surface harness failures. Conflicting instructions, inputs near skill boundaries that might route incorrectly, scenarios where the agent might fabricate (empty result + specific-sounding ask), near-miss out-of-scope asks that test the agent's refusal precision, requests that require multiple dependent tool calls where any one could be skipped.
+
+*Focus:* not "does the happy path work" but "where does the harness break, what does the agent do when data is missing or ambiguous, can the routing be tricked."
+
+Since the goal is to evaluate tool outputs (not just responses), Level 3 scenarios should specifically stress the paths where tool calls might not fire, fire incompletely, or return unexpected shapes.
 
 ## Files
 
