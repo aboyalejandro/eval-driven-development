@@ -1,6 +1,6 @@
 # Designing scenarios from a branch diff
 
-Scenarios test promises, not surfaces. Read `agent-analysis.md` first — the promise inventory is the input to this workflow. Don't design scenarios from a taxonomy; design them from what the agent claims to do.
+Scenarios test promises, not surfaces. Read `agent-analysis.md` and `evaluator-selection.md` first — the promise inventory is the input to this workflow, and you need the evaluator schema names before you can tag scenarios with the right judges. Don't design scenarios from a taxonomy; design them from what the agent claims to do.
 
 ## Workflow
 

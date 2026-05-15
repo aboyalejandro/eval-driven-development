@@ -1,5 +1,7 @@
 # Dataset design — shape, naming, coverage
 
+Read `evaluator-selection.md` before this doc. The evaluator is the anchor: its schema name flows into the dataset name, the `--evaluator` flag in `edd-run`, and the coverage decisions below. A dataset without a pinned evaluator produces scores nobody can act on.
+
 The dataset is the durable artifact every experiment scores against. Spend
 the time to make it boring and stable; a noisy dataset poisons every score
 that follows.

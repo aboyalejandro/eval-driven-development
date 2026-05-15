@@ -116,12 +116,12 @@ Read in this order:
 - `PREREQUISITES.md` (root) — **read first** — integration contract (agent over HTTP, agent traces to Opik directly, Opik REST coupling caveat)
 - `references/agent-analysis.md` — extract promise inventory from any agent source
 - `references/trace-inspection.md` — inspect your trace shape, write enrichment if your judges need normalization
-- `references/scenario-design.md` — derive scenario intents from promises; diff-driven agenda
-- `references/evaluator-selection.md` — derive dimensions from promises, then pick or build judges
-- `references/failure-modes.md` — red judge → likely fix surface (symptom-first, not evaluator-name-first)
-- `references/dataset-design.md` — item shape, coverage targets, naming
-- `references/experiment-grouping.md` — when to wrap experiments in an optimization
+- `references/evaluator-selection.md` — derive dimensions from promises, then pick or build judges; **drives scenario design and dataset shape**
+- `references/scenario-design.md` — derive scenario intents from promises; tag each with the judge names from evaluator-selection
 - `references/scoring.md` — how to read the score table
+- `references/failure-modes.md` — red judge → likely fix surface (symptom-first, not evaluator-name-first)
+- `references/dataset-design.md` — item shape, coverage targets, naming; anchored to the evaluator from evaluator-selection
+- `references/experiment-grouping.md` — when to wrap experiments in an optimization
 - `references/opik-endpoint-cheatsheet.md` — REST endpoints the scripts use
 
 ## Caveat — Opik REST coupling
