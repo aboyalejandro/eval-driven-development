@@ -36,10 +36,16 @@ All commands run from the **repo root** with the venv active (`source scripts/.v
 ### Setup — inner loop (minutes)
 
 ```bash
-edd check                                                # verify Opik connection
-edd run "Hello agent" --wait                             # single message
-edd run scenarios.txt --evaluators "your-evaluator-a,your-evaluator-b"
-edd score --since 10                                     # trigger judges on last N minutes of traces
+edd check                                   # verify Opik connection
+
+# No enrichment needed (simple agents):
+edd run "Hello agent" --wait                # single message — emit + score in one shot
+edd run scenarios.txt --wait --evaluators "your-evaluator-a,your-evaluator-b"
+
+# With enrichment (OpenInference or custom trace normalization):
+edd run scenarios.txt                       # emit + tag only (no judges)
+python _local/enrich_traces.py --since-minutes 5
+edd score --since 10                        # trigger judges on last N minutes of traces
 ```
 
 `scenarios.txt`: one scenario per line — plain string or JSON with optional `context`, `followups`, `evaluators` fields.

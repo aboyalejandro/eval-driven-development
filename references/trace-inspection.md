@@ -80,24 +80,55 @@ Use when your trace shape is stable and you don't need anything that isn't direc
 
 ### Pattern B — Enrich the trace metadata, point variables there
 
-Use when judges need derived fields (tool-call summaries, intent labels, span counts, latency buckets, anything you compute from the trace+spans).
+Use when judges need derived fields (tool-call summaries, tool outputs, intent labels, span counts, anything you compute from the trace+spans).
+
+**Tool names only (lightweight proxy):**
 
 ```python
 def enrich(client, project, trace_id):
     spans = client.get_spans(project, trace_id, size=200).get("content", [])
-    tool_names = [
-        s.get("name", "?")
-        for s in spans
+    tool_spans = [
+        s for s in spans
         if (s.get("input") or {}).get("openinference.span.kind") == "TOOL"
     ]
+    tool_names = [s.get("name", "?") for s in tool_spans]
     client.update_trace_metadata(
-        trace_id,
-        project,
+        trace_id, project,
         {"tools_called": tool_names, "tool_count": len(tool_names)},
     )
 ```
 
-Run this between `batch_update_traces` (tag step) and `trigger_evaluation` (judge step) — i.e. between `edd run` and `edd score`. The framework leaves this hook empty on purpose — see the comment block in `setup/cli.py` after the tagging step.
+Good enough for judges that only need to know *whether* tools fired and *which* ones.
+
+**Tool names + outputs (accurate grounding verification):**
+
+```python
+import json
+
+MAX_TOOLS = 10   # cap to avoid huge metadata; tune to your trace depth
+MAX_CHARS = 800  # per tool output
+
+def enrich(client, project, trace_id):
+    spans = client.get_spans(project, trace_id, size=200).get("content", [])
+    tool_spans = [
+        s for s in spans
+        if (s.get("input") or {}).get("openinference.span.kind") == "TOOL"
+    ]
+    tool_names = [s.get("name", "?") for s in tool_spans]
+    tool_outputs = []
+    for s in tool_spans[:MAX_TOOLS]:
+        raw = (s.get("output") or {}).get("output.value", "")
+        output_str = json.dumps(raw, default=str) if not isinstance(raw, str) else raw
+        tool_outputs.append({"name": s.get("name", "?"), "output": output_str[:MAX_CHARS]})
+    client.update_trace_metadata(
+        trace_id, project,
+        {"tools_called": tool_names, "tool_count": len(tool_names), "tool_outputs": tool_outputs},
+    )
+```
+
+Use this when grounding judges need to verify that specific facts in the response actually came from tool responses (not just that tools fired). **Truncation matters:** if a trace has more tool calls than `MAX_TOOLS`, some outputs won't be visible. Your grounding rubric should handle this: when `len(tools_called) > len(tool_outputs)`, give benefit of the doubt rather than scoring 0.
+
+Run this between `edd run` and `edd score`. The framework leaves this hook empty on purpose — see the comment block in `setup/cli.py` after the tagging step.
 
 Then judges read it:
 
@@ -106,6 +137,7 @@ variables = {
     "input": "input.input.value",
     "output": "output.output.value",
     "tools_called": "metadata.tools_called",
+    "tool_outputs": "metadata.tool_outputs",   # only if you enriched outputs
 }
 ```
 

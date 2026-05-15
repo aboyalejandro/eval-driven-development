@@ -57,6 +57,16 @@ Practical rules:
 - **Stable reds across two or more runs are actionable** — that's the judge consistently flagging the same behavior.
 - **Deltas are more reliable than absolutes.** If a prompt change moves a judge from 0 to 1 *and holds across two re-runs*, the change worked. A one-run flip is noise.
 
+## "0 = not applicable" convention
+
+Some judge rubrics score 0 when a dimension is not exercised by the trace, rather than defaulting to 1. This makes 1 meaningful: every cell that reads 1 was explicitly verified as correct. A 0 can mean either "failed" or "this trace didn't test this dimension."
+
+**Reading the digest when using this convention:**
+
+An average of `0.10` for `empty-result-recovery` across 10 traces doesn't mean the agent is failing recovery. It likely means 9 traces didn't exercise the dimension (scored 0 = not tested) and 1 trace tested it and passed (scored 1). The average is meaningless as an aggregate.
+
+To get a clean view of a single dimension, filter with `edd-inspect --evaluator <name>` — this shows only the traces that scored below threshold for that judge, with reasons. Ignore the digest average for "not applicable = 0" judges; focus on the individual failures and their reasons.
+
 ## Comparing runs
 
 Tag the run id and branch so you can compare tables across iterations in the Opik UI. The score delta between two runs of the same scenarios is the cleanest signal — absolute scores depend on judge calibration, but deltas catch real regressions.

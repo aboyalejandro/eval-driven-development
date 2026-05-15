@@ -12,6 +12,13 @@ Run the `agent-analysis.md` extraction. For each row in the promise inventory, d
 - Write one sentence describing what a score of 1 looks like and one describing score 0.
 - Note whether it's deterministic (code-based judge viable) or subjective (needs LLM-as-judge).
 
+**Scoring convention to decide upfront:** does 0 mean *failed* or *failed OR not applicable*?
+
+- **Default pass (0 = failed only):** judges default to 1 when the dimension isn't exercised. Cleaner averages, but 1s include unverified passes — harder to distinguish "verified correct" from "not tested."
+- **0 = not applicable (recommended):** judges score 0 when the trace doesn't exercise the dimension. Makes 1 meaningful — every 1 was explicitly verified. Trade-off: digest averages are noisy when many traces hit "not applicable." Use `edd-inspect --evaluator <name>` to filter to the traces that matter.
+
+Whichever you choose, write it into the rubric explicitly and apply it consistently across all judges in the project.
+
 Only after this list is drafted should you check what exists in the project.
 
 ## Step 1 — list what's already there
