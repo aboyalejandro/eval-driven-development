@@ -148,12 +148,11 @@ async def _run(
     client.batch_update_traces(trace_ids, project, tags_to_add=tags)
     log.info("tagged: %s", ", ".join(tags))
 
-    # 5b. Enrich each trace with a tool-call summary so judges can reason
-    # about trajectory. `trace.has_tool_spans` is unreliable for OpenInference-
-    # instrumented runtimes — we walk spans ourselves.
-    for tid in trace_ids:
-        client.enrich_trace_with_tool_summary(project, tid)
-    log.info("enriched %d traces with tool summary", len(trace_ids))
+    # If your judges need trace-shape normalization (e.g. tool-call summaries
+    # for OpenInference-instrumented agents, or flattening provider-specific
+    # input/output shapes), run that enrichment between this tagging step and
+    # the evaluator trigger below. The framework intentionally stays neutral —
+    # see references/trace-inspection.md for the pattern.
 
     # 6. Pick judges, trigger evaluation.
     evals = client.get_evaluators().get("content", [])

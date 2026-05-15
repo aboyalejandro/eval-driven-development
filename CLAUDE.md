@@ -110,6 +110,7 @@ Read in this order:
 
 - `PREREQUISITES.md` (root) — **read first** — integration contract (agent over HTTP, agent traces to Opik directly, Opik REST coupling caveat)
 - `references/agent-analysis.md` — extract promise inventory from any agent source
+- `references/trace-inspection.md` — inspect your trace shape, write enrichment if your judges need normalization
 - `references/scenario-design.md` — derive scenario intents from promises; diff-driven agenda
 - `references/evaluator-selection.md` — derive dimensions from promises, then pick or build judges
 - `references/failure-modes.md` — red judge → likely fix surface (symptom-first, not evaluator-name-first)

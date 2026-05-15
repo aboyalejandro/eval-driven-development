@@ -132,6 +132,7 @@ Two iterations on the same red judge = stop tweaking, the rubric is in `referenc
 | `.env.example` | Required env vars (root) |
 | `PREREQUISITES.md` | **Read first** — integration contract + Opik REST coupling caveat |
 | `references/agent-analysis.md` | Extract promise inventory from agent source |
+| `references/trace-inspection.md` | Inspect trace shape + write enrichment if judges need normalization |
 | `references/scenario-design.md` | Promise → scenario intent → instances (layer 1) |
 | `references/evaluator-selection.md` | Derive dimensions from promises, then pick / build judges |
 | `references/failure-modes.md` | Red judge → likely fix surface (symptom-first) |
