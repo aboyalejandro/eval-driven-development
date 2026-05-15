@@ -66,4 +66,20 @@ def print_results(scored: dict[str, list[dict]]) -> bool:
         table.add_row(*row)
 
     console.print(table)
+
+    # For each red cell, print the judge's reason inline so you don't need
+    # to open the Opik UI to understand what failed.
+    failures = [
+        (tid[:8], s["name"], s["value"], s.get("reason", ""))
+        for tid, scores in scored.items()
+        for s in scores
+        if s["value"] < 0.5 and s.get("reason")
+    ]
+    if failures:
+        console.print()
+        for tid, name, val, reason in failures:
+            console.print(
+                f"  [red]{tid} {name}={val:.2f}[/red]  {reason[:200]}"
+            )
+
     return all_pass

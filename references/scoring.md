@@ -13,6 +13,8 @@ The CLI prints one row per trace, one column per judge. Each cell is a 0–1 sco
 
 A run is green when no judge that *should* have an opinion came in below 0.5. Some judges abstaining (0.5) is fine — that's the judge correctly recognising the dimension doesn't apply.
 
+**Binary judges (INTEGER scoring):** if you create LLM-as-judge rules with an INTEGER output schema (0 or 1), you will never see a 0.5 score. Every cell is either 0 (fail) or 1 (pass). The `< 0.5` threshold still works — 0 is below it — but the abstain semantics don't apply. A `-` in the table means the judge didn't run; a 0 means it ran and failed. There is no middle ground with binary scoring.
+
 ## Reading the trace, not just the score
 
 The score points; the trace explains. Always open the trace for any red cell before tweaking the prompt — the score alone won't tell you whether the failure is:

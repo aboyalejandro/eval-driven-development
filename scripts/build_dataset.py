@@ -140,6 +140,18 @@ def main(
         f"from={from_iso} (of {len(traces)} scanned)"
     )
     if not matched:
+        # Help diagnose: show what tags actually exist in the window.
+        found_tags = sorted({tag for t in traces for tag in (t.get("tags") or [])})
+        if found_tags:
+            console.print(f"[yellow]tags found in window: {found_tags}[/yellow]")
+            console.print(
+                "[yellow]hint: re-run cli.py run to re-tag, or widen --from[/yellow]"
+            )
+        else:
+            console.print("[yellow]no tags found on any trace in this window[/yellow]")
+            console.print(
+                "[yellow]hint: cli.py run may not have tagged traces — check batch_update_traces[/yellow]"
+            )
         raise typer.Exit(code=1)
 
     items: list[dict] = []
