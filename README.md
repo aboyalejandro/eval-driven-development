@@ -39,7 +39,7 @@ EDD runs the **real agent harness** end-to-end: real toolkit, real auth, real do
 
 **0.5 is neutral, not a fail.** The judge abstained. Real failures sit below. The score points at the trace; the trace tells you why.
 
-**Tag every run.** A `run_id` on the agent name plus a `sim-<branch>` tag means you can filter your traces out of a shared project, compare branches side-by-side, and use the same tag to build a dataset from the same batch.
+**Tag every run.** A `run-<run_id>` tag plus a `sim-<branch>` tag on every trace means you can filter your sim runs out of a shared project, compare branches side-by-side, and use the same tag to build a dataset from the same batch.
 
 **The dataset is downstream of the sim, not upstream.** You don't hand-write expected outputs. You run scenarios, pick the traces that exercised the surface you care about, snapshot them. The judge scores against the agent's behavior, not against a baked-in answer.
 

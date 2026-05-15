@@ -31,12 +31,22 @@ After changes to prompts, tool surface, skills, model routing, or memory injecti
 
 1. **Pick scenarios** that exercise the surfaces the diff touches — one per intent. Keep under 10 for fast feedback.
 2. **Pick judges** that should have an opinion. Skip irrelevant ones — they drown signal with neutral 0.5 scores.
-3. **Run**:
+3. **Run**. Two paths depending on whether your traces need enrichment before scoring:
+
+   *No enrichment needed (simple agents):*
    ```bash
    python scripts/cli.py run scenarios.txt --wait --evaluators "<names>"
    ```
+
+   *With enrichment (e.g. OpenInference — add tool-call metadata before judges fire):*
+   ```bash
+   python scripts/cli.py run scenarios.txt          # emit + tag, exit
+   python _local/enrich_traces.py --since-minutes 5 # your enrichment step
+   python scripts/cli.py score --since 10           # trigger judges + poll + print table
+   ```
    The CLI tags every trace `sim-<branch>` — that tag is the join key for layer 2.
-4. **Read the table** — below 0.5 = real failure, 0.5 = abstain. See `references/scoring.md`.
+
+4. **Read the table** — below 0.5 = real failure. Red cells print the judge's reason inline. See `references/scoring.md`.
 5. **Open the trace** for any failure. Cross-reference `references/failure-modes.md`.
 6. **Fix and re-run** until green.
 
@@ -61,11 +71,7 @@ Consult `references/dataset-design.md`. Decide naming (`<project>-<topic>-<versi
 
 ### Phase C — Tag a sim batch
 
-Layer 1 already tags traces `sim-<branch>`. If you need fresh ones for the dataset:
-
-```bash
-python scripts/cli.py run scenarios.txt --wait
-```
+Layer 1 already tags traces `sim-<branch>`. If you need fresh ones for the dataset, run the full inner loop from Layer 1 Step 3 (with or without enrichment). Don't skip enrichment here — judges in the experiment will read the same variable paths they used in Layer 1.
 
 ### Phase D — Build the dataset
 
@@ -87,7 +93,7 @@ python scripts/build_dataset.py \
 python scripts/run_experiment.py \
   --project <opik-project> \
   --dataset-name <project>-<topic>-v1 \
-  --evaluator "<Schema Name>" \
+  --evaluator "<name-a>,<name-b>,<name-c>" \
   --branch-tag sim-$(git rev-parse --abbrev-ref HEAD) \
   [--optimization-name <topic>-baseline-vs-v2] \
   [--score-timeout 300] \
@@ -113,7 +119,7 @@ Prints a per-evaluator digest + failures below threshold with trace links. Use `
 - **evaluator issue** → recalibrate judge, re-run from Phase E
 - **flaky / model-bound** → tag and skip
 
-Two iterations on the same red judge = stop tweaking, the rubric is in `references/scoring.md`.
+Two *prompt iterations* on the same red judge = stop tweaking the prompt, widen the search. See `references/failure-modes.md` for the distinction between prompt iterations and re-runs of the same trace (judge noise).
 
 ## Files
 
@@ -145,7 +151,7 @@ Two iterations on the same red judge = stop tweaking, the rubric is in `referenc
 ## Prerequisites
 
 - An **Opik instance** with a **dedicated testing project** (not production)
-- Judges defined in that project, enabled + sampled
+- Judges defined in that project with `enabled=False, sampling_rate=0` (manual-trigger mode — see `references/evaluator-selection.md` Step 4)
 - Scenario file (layer 1) or a recipe that produces tagged sim traces (layer 2)
 
 ## Quickstart
