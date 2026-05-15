@@ -73,13 +73,16 @@ class OpikClient:
     def batch_update_traces(
         self, trace_ids: list[str], project: str, tags_to_add: list[str]
     ) -> None:
+        # Opik 2.x: PATCH with `{ids, update, merge_tags}` shape. `tags_to_add`
+        # lives inside the `update` body. Old POST {trace_ids, tags_to_add}
+        # returns 422 "traces must not be null".
         self._request(
-            "POST",
+            "PATCH",
             "/v1/private/traces/batch",
             json={
-                "project_name": project,
-                "trace_ids": trace_ids,
-                "tags_to_add": tags_to_add,
+                "ids": trace_ids,
+                "update": {"tags_to_add": tags_to_add},
+                "merge_tags": True,
             },
         )
 
@@ -96,6 +99,36 @@ class OpikClient:
             "/v1/private/spans",
             params={"project_name": project, "trace_id": trace_id, "size": size},
         )
+
+    def update_trace_metadata(
+        self, trace_id: str, project: str, metadata: dict
+    ) -> None:
+        """Patch a trace's metadata. Existing keys not in `metadata` are preserved."""
+        self._request(
+            "PATCH",
+            f"/v1/private/traces/{trace_id}",
+            json={"project_name": project, "metadata": metadata},
+        )
+
+    def enrich_trace_with_tool_summary(self, project: str, trace_id: str) -> dict:
+        """Walk spans, extract tool calls (OpenInference convention), patch
+        the trace metadata with `tools_called` (list of names) and `tool_count`.
+
+        Returns the summary dict. Useful when `trace.has_tool_spans` is
+        unreliable (some instrumentors emit `span.type == "general"` for tool
+        spans while still marking `openinference.span.kind == "TOOL"`).
+        """
+        spans = self.get_spans(project, trace_id, size=200).get("content", [])
+        tool_names: list[str] = []
+        for s in spans:
+            attrs = s.get("input") or {}
+            if attrs.get("openinference.span.kind") == "TOOL":
+                tool_names.append(s.get("name", "?"))
+        summary = {"tools_called": tool_names, "tool_count": len(tool_names)}
+        # Always patch — judges need `tools_called=[]` to be readable for
+        # the empty case, not absent.
+        self.update_trace_metadata(trace_id, project, summary)
+        return summary
 
     # --- evaluators (automation rules) ---
 
