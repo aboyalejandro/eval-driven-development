@@ -13,7 +13,7 @@ This doc teaches:
 Run one scenario against your agent (any user message). Confirm a trace lands in Opik, then pull it:
 
 ```python
-from opik_client import OpikClient
+from shared.opik_client import OpikClient
 c = OpikClient()
 trace = c._request("GET", f"/v1/private/traces/{TRACE_ID}")
 print("top-level keys:", list(trace.keys()))
@@ -97,7 +97,7 @@ def enrich(client, project, trace_id):
     )
 ```
 
-Run this between `batch_update_traces` (tag step) and `trigger_evaluation` (judge step) in `cli.py`. The framework leaves this hook empty on purpose — see the comment block in `cli.py` after the tagging step.
+Run this between `batch_update_traces` (tag step) and `trigger_evaluation` (judge step) — i.e. between `edd run` and `edd score`. The framework leaves this hook empty on purpose — see the comment block in `setup/cli.py` after the tagging step.
 
 Then judges read it:
 
@@ -111,7 +111,7 @@ variables = {
 
 ## Anti-patterns
 
-- **Baking instrumentor assumptions into the framework core.** If `cli.py` calls "extract tool calls from spans" by default, the framework no longer works for agents that don't use OpenInference. Keep enrichment in your fork's local script.
+- **Baking instrumentor assumptions into the framework core.** If the setup CLI called "extract tool calls from spans" by default, it would break for agents not using OpenInference. Keep enrichment in your fork's `_local/` script.
 - **Using `trace.has_tool_spans` for trajectory judges.** Opik computes this from `span.type`, not span attributes. Many instrumentors set `span.type = "general"` while still emitting `kind=TOOL` in attributes. Walk spans yourself.
 - **Putting the user message in a single variable across all agents.** OpenInference uses `input.value`, LangChain uses `messages[-1].content`, Anthropic raw uses `messages` array. The path is agent-specific; the judge prompt should be agnostic.
 
@@ -124,3 +124,5 @@ variables = {
 5. Write down the paths your judges will need. Pick Pattern A or B accordingly.
 
 15 minutes of inspection saves hours of guessing-then-debugging judge prompts.
+
+Once you know your trace shape and have the variable paths written down, move to `evaluator-selection.md` to wire those paths into your judge definitions.

@@ -44,7 +44,7 @@ One intent per row. Don't add intents for promises the diff doesn't touch.
 
 ## Scenario shape
 
-One intent per line in the file passed to `cli.py run`. Plain text or JSON.
+One intent per line in the file passed to `edd run`. Plain text or JSON.
 
 ```
 # intent: article performance grounding

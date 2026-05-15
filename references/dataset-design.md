@@ -12,7 +12,7 @@ Minimum fields each item carries through the loop:
 
 | Field | Source | Why |
 |---|---|---|
-| `id` | minted by `build_dataset.py` | dedupes upserts |
+| `id` | minted by `edd-build` | dedupes upserts |
 | `user_message` | extractor (default: `trace.input.user_message`) | judge input |
 | `assistant_response` | extractor (default: `trace.output.assistant_response`) | judge target |
 | `source_trace_id` | `trace.id` | links back to the sim trace for re-scoring + UI deep-link |
@@ -71,9 +71,9 @@ Start at 10–20 items for the first dry run. Ramp once the recipe works.
 
 ## Filtering criteria for ingestion
 
-`build_dataset.py` keeps an item if:
+`edd-build` keeps an item if:
 
-1. The trace carries the `--branch-tag` (set by `cli.py run` as
+1. The trace carries the `--branch-tag` (set by `edd run` as
    `sim-<branch>`).
 2. The trace start time is within `--from`.
 3. The extractor returns a dict (default extractor drops empty

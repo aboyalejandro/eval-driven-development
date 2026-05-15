@@ -16,7 +16,7 @@ Only after this list is drafted should you check what exists in the project.
 
 ## Step 1 — list what's already there
 
-Hit `/v1/private/automations/evaluators` (the CLI prints them via `opik_client.get_evaluators()`). Each rule's *schema name* — the `code.schema[0].name` field — is the canonical handle you'll pass as `--evaluator` everywhere downstream.
+Hit `/v1/private/automations/evaluators` — `OpikClient().get_evaluators()` returns them as a list. Each rule's *schema name* — the `code.schema[0].name` field — is the canonical handle you'll pass as `--evaluator` everywhere downstream.
 
 Map your derived dimensions to existing rules. Reuse where the rubric matches. Build new when it doesn't — don't stretch an existing judge to cover a dimension it wasn't calibrated for.
 

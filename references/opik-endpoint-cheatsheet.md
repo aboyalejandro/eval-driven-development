@@ -76,8 +76,8 @@ to the timeline view. Setting it after the fact requires a manual update.
 
 Triggered scores write to **trace-level** `feedback_scores` (embedded on
 the trace, not a separate endpoint in 2.x). They do *not* auto-propagate
-to experiment items — `run_experiment.py` polls them off the traces and
-copies them onto the items so both layers carry the data.
+to experiment items — `edd-run` polls them off the traces and
+copies them onto the items so both the trace and experiment item carry the scores.
 
 If scores never appear, fetch `/automations/evaluators/{id}/logs` — the
 most common cause is "API key not configured for LLM" when the judge

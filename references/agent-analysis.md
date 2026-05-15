@@ -49,6 +49,8 @@ Translate the above into a flat table. One row per testable promise.
 
 Add rows for every distinct promise you can extract. Remove rows where you can't describe the failure — those aren't testable yet.
 
+Once the inventory is complete: read `trace-inspection.md` to map your trace shape (where does the user message live? where do tool calls appear?), then `evaluator-selection.md` to convert each row into a judge dimension with the right variable paths.
+
 ## Baseline vs generated
 
 **Baseline** — the promises that define the agent's core identity, stable across any diff:

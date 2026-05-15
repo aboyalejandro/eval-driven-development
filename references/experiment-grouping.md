@@ -16,7 +16,7 @@ visually without flipping between detached experiment URLs.
 
 ## How
 
-Pass `--optimization-name <slug>` to `run_experiment.py`. The script:
+Pass `--optimization-name <slug>` to `edd-run`. The script:
 
 1. `find_optimization(name, dataset_id)` — reuses if present
 2. Otherwise mints a UUID and `upsert_optimization` with `status=running`
