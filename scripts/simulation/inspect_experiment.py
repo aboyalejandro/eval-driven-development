@@ -4,13 +4,12 @@
 Joins dataset items to experiment outputs and feedback scores, prints a
 digest table, and lists items where any judge scored below `--score-threshold`.
 
-    python inspect_experiment.py --experiment-id <uuid>
-    python inspect_experiment.py --experiment-name <name> --score-threshold 0.5
+    edd-inspect --experiment-id <uuid>
+    edd-inspect --experiment-name <name> --score-threshold 0.5
 """
 
 import json
 import os
-import sys
 from pathlib import Path
 from statistics import mean
 
@@ -19,9 +18,7 @@ from dotenv import load_dotenv
 from rich.console import Console
 from rich.table import Table
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from opik_client import OpikClient  # noqa: E402
+from shared.opik_client import OpikClient
 
 console = Console()
 app = typer.Typer(add_completion=False)

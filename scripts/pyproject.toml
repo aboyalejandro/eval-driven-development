@@ -16,10 +16,17 @@ dependencies = [
     "opik>=2.0.36",
 ]
 
+[project.scripts]
+edd        = "setup.cli:app"
+edd-build  = "simulation.build_dataset:app"
+edd-run    = "simulation.run_experiment:app"
+edd-inspect = "simulation.inspect_experiment:app"
+
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-py-modules = ["agent", "cli", "opik_client", "results", "build_dataset", "run_experiment", "inspect_experiment"]
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = [".venv*", "*.venv*"]
 

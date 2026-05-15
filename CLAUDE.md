@@ -9,7 +9,11 @@ PREREQUISITES.md         ← read first — integration contract + Opik REST cav
 .env.example, .env       ← project config (.env gitignored)
 scenarios.example.txt, scenarios.txt    ← per-agent scenarios (.txt gitignored)
 regressions.example.txt, regressions.txt ← per-agent baselines (.txt gitignored)
-scripts/    ← framework engine (agnostic — pyproject.toml, agent.py, cli.py, ...)
+scripts/                 ← framework engine
+  setup/                   ← setup phase: run scenarios, tag traces, score (edd)
+  simulation/              ← simulation phase: dataset, experiment, inspect (edd-build / edd-run / edd-inspect)
+  shared/                  ← REST wrapper (opik_client.py)
+  pyproject.toml
 references/ ← decision guides
 ```
 
@@ -27,23 +31,24 @@ Required env vars: `OPIK_URL`, `OPIK_API_KEY`, `OPIK_OTLP_ENDPOINT` (Opik instan
 
 ## Commands
 
-All commands run from the **repo root** with the venv active.
+All commands run from the **repo root** with the venv active (`source scripts/.venv/bin/activate`).
 
-### Layer 1 — inner loop (minutes)
+### Setup — inner loop (minutes)
 
 ```bash
-python scripts/cli.py check                              # verify Opik connection
-python scripts/cli.py run "Hello agent" --wait           # single message
-python scripts/cli.py run scenarios.txt --wait --evaluators "your-evaluator-a,your-evaluator-b"
+edd check                                                # verify Opik connection
+edd run "Hello agent" --wait                             # single message
+edd run scenarios.txt --evaluators "your-evaluator-a,your-evaluator-b"
+edd score --since 10                                     # trigger judges on last N minutes of traces
 ```
 
 `scenarios.txt`: one scenario per line — plain string or JSON with optional `context`, `followups`, `evaluators` fields.
 
-### Layer 2 — durable dataset + experiment
+### Simulation — durable dataset + experiment
 
 ```bash
 # 1. Build dataset from sim traces
-python scripts/build_dataset.py \
+edd-build \
   --project <opik-project> \
   --dataset-name <project>-<topic>-v1 \
   --branch-tag sim-$(git rev-parse --abbrev-ref HEAD) \
@@ -51,44 +56,44 @@ python scripts/build_dataset.py \
   --dry-run   # preview without writing
 
 # 2. Run experiment
-python scripts/run_experiment.py \
+edd-run \
   --project <opik-project> \
   --dataset-name <project>-<topic>-v1 \
-  --evaluator "your-evaluator-name" \
+  --evaluator "your-evaluator-a,your-evaluator-b" \
   --branch-tag sim-$(git rev-parse --abbrev-ref HEAD)
 
 # 3. Inspect results
-python scripts/inspect_experiment.py --experiment-name <name-from-previous-step>
+edd-inspect --experiment-name <name-from-previous-step>
 ```
 
 ## Architecture
 
-Two-layer eval loop over three primitives (headless runner, traces, judges):
+Two-phase eval loop over three primitives (headless runner, traces, judges):
 
 ```
-inner loop:  edit → run scenarios → score traces → read table → fix or ship
-outer loop:  curate dataset → run experiment → compare on timeline → keep or roll back
+setup:       edit → run scenarios → score traces → read table → fix or ship
+simulation:  curate dataset → run experiment → compare on timeline → keep or roll back
 ```
 
-**Entry point to touch:** `scripts/agent.py` — implement `create_agent()` to return an object with `arun(message) → response.content`. Wire OTEL instrumentor here. The rest of the scripts consume traces via Opik REST.
+**Entry point to touch:** `scripts/setup/agent.py` — implement `create_agent()` to return an object with `arun(message) → response.content`. Wire OTEL instrumentor here. The rest of the scripts consume traces via Opik REST.
 
-**Script roles:**
+**Module roles:**
 
-| Script | Role |
-|---|---|
-| `cli.py` | Layer 1 orchestrator — runs scenarios, tags traces, fires judges, polls scores |
-| `agent.py` | **Only file you must edit** — `create_agent` factory + OTEL setup |
-| `opik_client.py` | REST wrapper for Opik (traces, datasets, experiments, evaluators) |
-| `results.py` | Polls scores and renders per-dimension table |
-| `build_dataset.py` | Converts sim traces → Opik dataset (Layer 2) |
-| `run_experiment.py` | Runs dataset through judges under an optimization timeline |
-| `inspect_experiment.py` | Experiment digest + failure surface |
+| Module | Command | Role |
+|---|---|---|
+| `setup/cli.py` | `edd` | Orchestrator — run scenarios, tag traces, trigger judges, poll scores |
+| `setup/agent.py` | — | **Only file you must edit** — `create_agent` factory + OTEL setup |
+| `setup/results.py` | — | Renders per-dimension score table with inline judge reasoning |
+| `shared/opik_client.py` | — | REST wrapper for Opik (traces, datasets, experiments, evaluators) |
+| `simulation/build_dataset.py` | `edd-build` | Converts sim traces → Opik dataset |
+| `simulation/run_experiment.py` | `edd-run` | Runs dataset through judges under an optimization timeline |
+| `simulation/inspect_experiment.py` | `edd-inspect` | Experiment digest + failure surface |
 
 ## Key constraints
 
 - `create_agent` must name the agent starting with `sim-{run_id}-` so traces are filterable by branch tag.
 - Don't inject context by concatenating into the user message — mirror how production traffic arrives.
-- `--dry-run` before every `build_dataset.py` run to verify the extractor shape.
+- `--dry-run` before every `edd-build` run to verify the extractor shape.
 - Supply `--extractor module:function` when trace shape differs from defaults (`trace.input.user_message` / `trace.output.assistant_response`).
 - Dataset naming convention: `<project>-<topic>-v<N>`. Pin `dataset_version_id` per experiment; bump the name to start a new optimization timeline.
 
@@ -121,4 +126,4 @@ Read in this order:
 
 ## Caveat — Opik REST coupling
 
-The framework is tightly coupled to Opik's REST API. Endpoints used by `scripts/opik_client.py` are listed in `references/opik-endpoint-cheatsheet.md`. If a previously-working setup starts erroring after time has passed, suspect API drift first — check Opik release notes before debugging the framework itself.
+The framework is tightly coupled to Opik's REST API. Endpoints used by `scripts/shared/opik_client.py` are listed in `references/opik-endpoint-cheatsheet.md`. If a previously-working setup starts erroring after time has passed, suspect API drift first — check Opik release notes before debugging the framework itself.

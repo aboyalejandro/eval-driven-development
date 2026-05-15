@@ -5,7 +5,7 @@ import time
 from rich.console import Console
 from rich.table import Table
 
-from opik_client import OpikClient
+from shared.opik_client import OpikClient
 
 console = Console()
 

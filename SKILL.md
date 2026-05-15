@@ -27,7 +27,7 @@ For rationale see `README.md`. Mid-loop references:
 
 After changes to prompts, tool surface, skills, model routing, or memory injection. Skip for pure UI, refactors that don't touch prompts/tools, or bug fixes with a reproducing unit test.
 
-## Layer 1 — Simulate + score
+## Setup — Simulate + score
 
 1. **Pick scenarios** that exercise the surfaces the diff touches — one per intent. Keep under 10 for fast feedback.
 2. **Pick judges** that should have an opinion. Skip irrelevant ones — they drown signal with neutral 0.5 scores.
@@ -35,16 +35,16 @@ After changes to prompts, tool surface, skills, model routing, or memory injecti
 
    *No enrichment needed (simple agents):*
    ```bash
-   python scripts/cli.py run scenarios.txt --wait --evaluators "<names>"
+   edd run scenarios.txt --wait --evaluators "<names>"
    ```
 
    *With enrichment (e.g. OpenInference — add tool-call metadata before judges fire):*
    ```bash
-   python scripts/cli.py run scenarios.txt          # emit + tag, exit
+   edd run scenarios.txt                            # emit + tag, exit
    python _local/enrich_traces.py --since-minutes 5 # your enrichment step
-   python scripts/cli.py score --since 10           # trigger judges + poll + print table
+   edd score --since 10                             # trigger judges + poll + print table
    ```
-   The CLI tags every trace `sim-<branch>` — that tag is the join key for layer 2.
+   The CLI tags every trace `sim-<branch>` — that tag is the join key for simulation.
 
 4. **Read the table** — below 0.5 = real failure. Red cells print the judge's reason inline. See `references/scoring.md`.
 5. **Open the trace** for any failure. Cross-reference `references/failure-modes.md`.
@@ -52,7 +52,7 @@ After changes to prompts, tool surface, skills, model routing, or memory injecti
 
 This loop is enough for most branch-level work.
 
-## Layer 2 — Dataset + experiment
+## Simulation — Dataset + experiment
 
 Use when you want the score to outlive the branch:
 
@@ -71,12 +71,12 @@ Consult `references/dataset-design.md`. Decide naming (`<project>-<topic>-<versi
 
 ### Phase C — Tag a sim batch
 
-Layer 1 already tags traces `sim-<branch>`. If you need fresh ones for the dataset, run the full inner loop from Layer 1 Step 3 (with or without enrichment). Don't skip enrichment here — judges in the experiment will read the same variable paths they used in Layer 1.
+Setup already tags traces `sim-<branch>`. If you need fresh ones for the dataset, run the full setup loop from Step 3 (with or without enrichment). Don't skip enrichment here — judges in the experiment will read the same variable paths they used in setup.
 
 ### Phase D — Build the dataset
 
 ```bash
-python scripts/build_dataset.py \
+edd-build \
   --project <opik-project> \
   --dataset-name <project>-<topic>-v1 \
   --branch-tag sim-$(git rev-parse --abbrev-ref HEAD) \
@@ -90,7 +90,7 @@ python scripts/build_dataset.py \
 ### Phase E — Run the experiment
 
 ```bash
-python scripts/run_experiment.py \
+edd-run \
   --project <opik-project> \
   --dataset-name <project>-<topic>-v1 \
   --evaluator "<name-a>,<name-b>,<name-c>" \
@@ -105,7 +105,7 @@ Triggers the evaluator on every linked trace, polls scores, creates the experime
 ### Phase F — Inspect + iterate
 
 ```bash
-python scripts/inspect_experiment.py \
+edd-inspect \
   --experiment-id <uuid> \
   [--score-threshold 0.5] \
   [--evaluator "<Schema Name>"] \
@@ -123,36 +123,36 @@ Two *prompt iterations* on the same red judge = stop tweaking the prompt, widen 
 
 ## Files
 
-| Path | Purpose |
-|------|---------|
-| `scripts/cli.py` | Layer 1 — run scenarios, tag traces, trigger judges, poll scores |
-| `scripts/agent.py` | **Wire your runtime here** — `create_agent` factory + OTEL |
-| `scripts/opik_client.py` | REST wrapper (traces, datasets, experiments, optimizations, evaluators) |
-| `scripts/results.py` | Polls scores, renders the per-dimension table |
-| `scripts/build_dataset.py` | Layer 2 — sim traces → Opik dataset |
-| `scripts/run_experiment.py` | Layer 2 — dataset → experiment (optional optimization grouping) |
-| `scripts/inspect_experiment.py` | Layer 2 — experiment digest + failure surface |
-| `scripts/pyproject.toml` | Dependencies |
-| `scenarios.example.txt` | Sample scenarios (root — copy to `scenarios.txt`, gitignored) |
-| `regressions.example.txt` | Baseline scenarios (root — copy to `regressions.txt`, gitignored) |
-| `.env.example` | Required env vars (root) |
-| `PREREQUISITES.md` | **Read first** — integration contract + Opik REST coupling caveat |
-| `references/agent-analysis.md` | Extract promise inventory from agent source |
-| `references/trace-inspection.md` | Inspect trace shape + write enrichment if judges need normalization |
-| `references/scenario-design.md` | Promise → scenario intent → instances (layer 1) |
-| `references/evaluator-selection.md` | Derive dimensions from promises, then pick / build judges |
-| `references/failure-modes.md` | Red judge → likely fix surface (symptom-first) |
-| `references/scoring.md` | Reading the score table |
-| `references/dataset-design.md` | Item shape, naming, coverage (layer 2) |
-| `references/experiment-grouping.md` | Optimization timelines (layer 2) |
-| `references/opik-endpoint-cheatsheet.md` | REST surface the scripts touch |
-| `README.md` | Rationale |
+| Path | Command | Purpose |
+|------|---------|---------|
+| `scripts/setup/cli.py` | `edd` | Setup orchestrator — run scenarios, tag traces, trigger judges, poll scores |
+| `scripts/setup/agent.py` | — | **Wire your runtime here** — `create_agent` factory + OTEL |
+| `scripts/setup/results.py` | — | Polls scores, renders the per-dimension table with inline reasons |
+| `scripts/shared/opik_client.py` | — | REST wrapper (traces, datasets, experiments, optimizations, evaluators) |
+| `scripts/simulation/build_dataset.py` | `edd-build` | Simulation — sim traces → Opik dataset |
+| `scripts/simulation/run_experiment.py` | `edd-run` | Simulation — dataset → experiment (optional optimization grouping) |
+| `scripts/simulation/inspect_experiment.py` | `edd-inspect` | Simulation — experiment digest + failure surface |
+| `scripts/pyproject.toml` | — | Dependencies + entry points |
+| `scenarios.example.txt` | — | Sample scenarios (root — copy to `scenarios.txt`, gitignored) |
+| `regressions.example.txt` | — | Baseline scenarios (root — copy to `regressions.txt`, gitignored) |
+| `.env.example` | — | Required env vars (root) |
+| `PREREQUISITES.md` | — | **Read first** — integration contract + Opik REST coupling caveat |
+| `references/agent-analysis.md` | — | Extract promise inventory from agent source |
+| `references/trace-inspection.md` | — | Inspect trace shape + write enrichment if judges need normalization |
+| `references/scenario-design.md` | — | Promise → scenario intent → instances (setup) |
+| `references/evaluator-selection.md` | — | Derive dimensions from promises, then pick / build judges |
+| `references/failure-modes.md` | — | Red judge → likely fix surface (symptom-first) |
+| `references/scoring.md` | — | Reading the score table |
+| `references/dataset-design.md` | — | Item shape, naming, coverage (simulation) |
+| `references/experiment-grouping.md` | — | Optimization timelines (simulation) |
+| `references/opik-endpoint-cheatsheet.md` | — | REST surface the scripts touch |
+| `README.md` | — | Rationale |
 
 ## Prerequisites
 
 - An **Opik instance** with a **dedicated testing project** (not production)
 - Judges defined in that project with `enabled=False, sampling_rate=0` (manual-trigger mode — see `references/evaluator-selection.md` Step 4)
-- Scenario file (layer 1) or a recipe that produces tagged sim traces (layer 2)
+- Scenario file (setup) or a recipe that produces tagged sim traces (simulation)
 
 ## Quickstart
 
@@ -160,17 +160,17 @@ Two *prompt iterations* on the same red judge = stop tweaking the prompt, widen 
 cd scripts && pip install -e . && cd ..
 cp .env.example .env  # OPIK_URL, OPIK_API_KEY, OPIK_OTLP_ENDPOINT
 
-# wire create_agent in scripts/agent.py, then run from root:
-python scripts/cli.py check
-python scripts/cli.py run "Hello agent" --wait
+# wire create_agent in scripts/setup/agent.py, then run from root:
+edd check
+edd run "Hello agent" --wait
 
-# layer 2 (when you want a durable score):
-python scripts/build_dataset.py --project <p> --dataset-name <p>-<topic>-v1 \
+# simulation (when you want a durable score):
+edd-build --project <p> --dataset-name <p>-<topic>-v1 \
   --branch-tag sim-$(git rev-parse --abbrev-ref HEAD) --dry-run
-python scripts/run_experiment.py --project <p> --dataset-name <p>-<topic>-v1 \
+edd-run --project <p> --dataset-name <p>-<topic>-v1 \
   --evaluator "<your-evaluator-name>" \
   --branch-tag sim-$(git rev-parse --abbrev-ref HEAD)
-python scripts/inspect_experiment.py --experiment-name <name-from-previous-step>
+edd-inspect --experiment-name <name-from-previous-step>
 ```
 
 ## Anti-patterns

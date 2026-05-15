@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Build an Opik dataset from sim traces tagged by `cli.py run`.
+"""Build an Opik dataset from sim traces tagged by `edd run`.
 
-The sim CLI tags every trace it emits with `sim-<branch>`. This script picks
+The setup CLI tags every trace it emits with `sim-<branch>`. This script picks
 those traces out of a project, extracts an item per trace, and upserts them
 into a named dataset. The dataset is the durable artifact every later
 experiment scores against.
@@ -11,7 +11,7 @@ off the trace. Replace it via `--extractor module:function` for runtimes
 that shape their spans differently — the callable receives the raw trace
 dict and returns the item dict (or `None` to skip).
 
-    python build_dataset.py \
+    edd-build \
         --project my-project \
         --dataset-name edd-recovery-v1 \
         --branch-tag sim-feat/recovery \
@@ -33,9 +33,7 @@ import typer
 from dotenv import load_dotenv
 from rich.console import Console
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from opik_client import OpikClient  # noqa: E402
+from shared.opik_client import OpikClient
 
 console = Console()
 app = typer.Typer(add_completion=False)

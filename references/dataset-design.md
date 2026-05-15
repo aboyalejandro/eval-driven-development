@@ -33,7 +33,7 @@ trace.output["output.value"] → assistant response
 If you skip `--extractor` with an OpenInference-instrumented agent, the default extractor returns `None` for every item and the dataset ends up empty. Always do a `--dry-run` first to verify items extract cleanly:
 
 ```bash
-python scripts/build_dataset.py ... --dry-run
+edd-build ... --dry-run
 ```
 
 Inspect the two sample items printed. If `user_message` and `assistant_response` are empty strings, you need a custom extractor. See `references/trace-inspection.md` for the pattern; the extractor is a plain Python callable — one function in a `.py` file, importable from the repo root.

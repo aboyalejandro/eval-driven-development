@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Eval-Driven Development CLI.
+"""Eval-Driven Development CLI (setup phase).
 
-python cli.py run "Hello agent"
-python cli.py run scenarios.txt --evaluators "skill-routing,output-format"
-python cli.py score --since 10          # trigger + poll judges on last N minutes of traces
-python cli.py check
+edd run "Hello agent"
+edd run scenarios.txt --evaluators "skill-routing,output-format"
+edd score --since 10          # trigger + poll judges on last N minutes of traces
+edd check
 """
 
 import asyncio
@@ -12,7 +12,6 @@ import json
 import logging
 import os
 import subprocess
-import sys
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -22,11 +21,9 @@ import typer
 from dotenv import load_dotenv
 from rich.console import Console
 
-sys.path.insert(0, str(Path(__file__).parent))
-
-from agent import run_scenario
-from opik_client import OpikClient
-from results import poll_scores, print_results
+from setup.agent import run_scenario
+from shared.opik_client import OpikClient
+from setup.results import poll_scores, print_results
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 log = logging.getLogger(__name__)

@@ -64,7 +64,7 @@ The inner loop alone is enough for branch-level work. Reach for the dataset + ex
 - Two prompt variants need to be compared on identical inputs
 - The work will eventually feed an HRPO / search-based optimizer that needs a durable target
 
-Otherwise stop at layer 1.
+Otherwise stop at setup.
 
 ## What you get
 

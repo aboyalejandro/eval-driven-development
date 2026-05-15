@@ -2,17 +2,17 @@
 """Run an Opik experiment on top of an existing dataset.
 
 The dataset already carries items linked back to their source traces (built
-via `build_dataset.py`). This script triggers a chosen evaluator on those
+via `edd-build`). This script triggers a chosen evaluator on those
 traces, polls until scores land, then creates an experiment so the score
 table is visible in the Opik UI and comparable across runs.
 
 Optional: wrap multiple experiments under an Optimization (same
 `--optimization-name`) to get a single timeline view of prompt iterations.
 
-    python run_experiment.py \
+    edd-run \
         --project my-project \
         --dataset-name edd-recovery-v1 \
-        --evaluator "Recovery Persistence" \
+        --evaluator "recovery,output-format" \
         --branch-tag sim-feat/recovery \
         [--experiment-name recovery-pre-merge] \
         [--optimization-name recovery-baseline-vs-v2] \
@@ -22,20 +22,16 @@ Optional: wrap multiple experiments under an Optimization (same
 
 import json
 import os
-import sys
 import time
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 import typer
 from dotenv import load_dotenv
 from rich.console import Console
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from opik_client import OpikClient  # noqa: E402
+from shared.opik_client import OpikClient
 
 console = Console()
 app = typer.Typer(add_completion=False)

@@ -51,7 +51,7 @@ Don't run experiments against an uncalibrated LLM judge — you'll chase noise. 
 
 Two modes for the same rule. Pick one per judge — don't mix.
 
-**Manual-trigger mode (Layer 1 inner loop default):** `enabled=false`, `sampling_rate=0.0`. The framework's `trigger_evaluation` ignores both flags and fires the judge on exactly the traces you point at. Use this when sim traffic is the only thing you want scored — keeps the project clean of stray scores from concurrent dev sessions and avoids double-counting (auto-sample + manual trigger on the same trace).
+**Manual-trigger mode (setup inner loop default):** `enabled=false`, `sampling_rate=0.0`. The framework's `trigger_evaluation` ignores both flags and fires the judge on exactly the traces you point at. Use this when sim traffic is the only thing you want scored — keeps the project clean of stray scores from concurrent dev sessions and avoids double-counting (auto-sample + manual trigger on the same trace).
 
 **Auto-sample mode (production-parity):** `enabled=true`, `sampling_rate=1.0` (or fractional). Opik scores every matching trace as it lands, including production traffic. Use when you want sim and prod scored by the same rubric and the project receives both kinds of traffic.
 

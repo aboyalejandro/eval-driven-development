@@ -75,4 +75,4 @@ Write messages as a real user would type them, not as a test engineer would. Sli
 
 - Scenarios for promises the diff doesn't touch — neutral noise, wasted tokens.
 - Multi-turn scenarios unless the diff touches session memory or follow-up routing.
-- "All possible phrasings" — wording variants belong in the Layer 2 dataset, not the inner loop.
+- "All possible phrasings" — wording variants belong in the simulation dataset, not the setup loop.

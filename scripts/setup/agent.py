@@ -62,14 +62,23 @@ async def create_agent(
             if AGENT_AUTH:
                 headers["Authorization"] = AGENT_AUTH
 
+            # --- LOCAL ADAPTATION: Agno/AgentOS — DO NOT COMMIT TO FRAMEWORK ---
+            # Agno's AgentOS streams SSE by default and uses `session_id` for
+            # multi-turn continuity. These two fields are runtime-specific; the
+            # generic framework does not include them.
             async with httpx.AsyncClient(timeout=120.0) as client:
                 resp = await client.post(
                     AGENT_ENDPOINT,
                     headers=headers,
-                    data={"message": full_message},
+                    data={
+                        "message": full_message,
+                        "session_id": self._session_id,
+                        "stream": "false",
+                    },
                 )
                 resp.raise_for_status()
                 data = resp.json()
+            # --- END LOCAL ADAPTATION ---
 
             return SimpleNamespace(content=data.get("content", ""))
 
