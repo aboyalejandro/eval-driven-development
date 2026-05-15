@@ -1,4 +1,19 @@
-"""Headless agent runner — HTTP adapter for AgentOS REST API."""
+"""Headless agent runner — HTTP adapter.
+
+The framework assumes the agent under test is reachable over HTTP. This adapter
+is a starting template: edit `arun()` if your agent's request/response shape
+differs from the default contract below.
+
+Default contract:
+    POST {AGENT_ENDPOINT}
+    Content-Type: application/x-www-form-urlencoded
+    body: message=<str>, session_id=<str>
+    response: JSON with `content` field containing the assistant reply
+
+The agent is responsible for its own OTEL → Opik tracing. This adapter does
+not instrument the agent runtime; it only invokes the endpoint and relays the
+text response. See `PREREQUISITES.md` for the integration contract.
+"""
 
 import os
 import uuid
@@ -9,8 +24,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-AGENT_BASE_URL = os.getenv("AGENT_BASE_URL", "http://localhost:7777")
-AGENT_ID = os.getenv("AGENT_ID", "substack-author-agent")
+AGENT_ENDPOINT = os.getenv("AGENT_ENDPOINT")
+AGENT_AUTH = os.getenv("AGENT_AUTH")  # optional, sent as Authorization header
+AGENT_NAME = os.getenv("AGENT_NAME", "agent")  # used in trace filter prefix
 
 
 async def create_agent(
@@ -18,22 +34,21 @@ async def create_agent(
     run_id: str,
     context: dict | None = None,
 ):
-    """HTTP proxy to a running AgentOS server.
+    """Return an object with `arun(message)` that calls the agent over HTTP.
 
-    Targets: POST {AGENT_BASE_URL}/agents/{AGENT_ID}/runs
-    Response shape: {"content": "...", "run_id": "...", "session_id": "...", "status": "COMPLETED"}
-
-    OTEL is emitted by the agent server itself (openinference-instrumentation-agno).
-    No instrumentation needed here — traces land in Opik via the server's exporter.
-
-    Context: AgentOS has no native context field. For this agent type (conversational,
-    no page/tenant injection), context keys are folded into the message as a natural
-    qualifier — this matches how production users phrase context-bearing requests.
+    Context: most agents have no structured context field. For this default
+    contract, context keys are folded into the message as a natural qualifier.
+    If your agent supports structured context (system metadata, dedicated
+    context tool, template variables), wire it in here instead.
     """
+    if not AGENT_ENDPOINT:
+        raise RuntimeError(
+            "AGENT_ENDPOINT is not set. Configure it in .env (see .env.example)."
+        )
 
     class AgentProxy:
         def __init__(self):
-            self.name = f"sim-{run_id}-{AGENT_ID}"
+            self.name = f"sim-{run_id}-{AGENT_NAME}"
             self._session_id = session_id
             self._context = context or {}
 
@@ -43,10 +58,14 @@ async def create_agent(
                 qualifier = ", ".join(f"{k}: {v}" for k, v in self._context.items())
                 full_message = f"{message} ({qualifier})"
 
+            headers = {"Content-Type": "application/x-www-form-urlencoded"}
+            if AGENT_AUTH:
+                headers["Authorization"] = AGENT_AUTH
+
             async with httpx.AsyncClient(timeout=120.0) as client:
                 resp = await client.post(
-                    f"{AGENT_BASE_URL}/agents/{AGENT_ID}/runs",
-                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    AGENT_ENDPOINT,
+                    headers=headers,
                     data={"message": full_message, "session_id": self._session_id},
                 )
                 resp.raise_for_status()

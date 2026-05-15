@@ -5,9 +5,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Layout
 
 ```
-.env.example, .env              ← project config (root, gitignored when populated)
-scenarios.example.txt, scenarios.txt    ← per-agent scenarios (root)
-regressions.example.txt, regressions.txt ← per-agent baselines (root)
+PREREQUISITES.md         ← read first — integration contract + Opik REST caveat
+.env.example, .env       ← project config (.env gitignored)
+scenarios.example.txt, scenarios.txt    ← per-agent scenarios (.txt gitignored)
+regressions.example.txt, regressions.txt ← per-agent baselines (.txt gitignored)
 scripts/    ← framework engine (agnostic — pyproject.toml, agent.py, cli.py, ...)
 references/ ← decision guides
 ```
@@ -22,7 +23,7 @@ cd ..
 cp .env.example .env   # fill in OPIK_URL, OPIK_API_KEY, OPIK_OTLP_ENDPOINT
 ```
 
-Required env vars: `OPIK_URL`, `OPIK_API_KEY`, `OPIK_OTLP_ENDPOINT` (Opik instance), plus any creds your agent needs (`AGENT_BASE_URL`, `AGENT_ID`).
+Required env vars: `OPIK_URL`, `OPIK_API_KEY`, `OPIK_OTLP_ENDPOINT` (Opik instance), and `AGENT_ENDPOINT` (HTTP URL of the agent under test). See `PREREQUISITES.md` for the full integration contract.
 
 ## Commands
 
@@ -105,13 +106,18 @@ Workflow on a fresh agent:
 
 ## Reference docs
 
-`references/` has decision guides. Read in this order:
+Read in this order:
 
-- `agent-analysis.md` — **read first** — extract promise inventory from any agent source
-- `scenario-design.md` — derive scenario intents from promises; diff-driven agenda
-- `evaluator-selection.md` — derive dimensions from promises, then pick or build judges
-- `failure-modes.md` — red judge → likely fix surface (symptom-first, not evaluator-name-first)
-- `dataset-design.md` — item shape, coverage targets, naming
-- `experiment-grouping.md` — when to wrap experiments in an optimization
-- `scoring.md` — how to read the score table
-- `opik-endpoint-cheatsheet.md` — REST endpoints the scripts use
+- `PREREQUISITES.md` (root) — **read first** — integration contract (agent over HTTP, agent traces to Opik directly, Opik REST coupling caveat)
+- `references/agent-analysis.md` — extract promise inventory from any agent source
+- `references/scenario-design.md` — derive scenario intents from promises; diff-driven agenda
+- `references/evaluator-selection.md` — derive dimensions from promises, then pick or build judges
+- `references/failure-modes.md` — red judge → likely fix surface (symptom-first, not evaluator-name-first)
+- `references/dataset-design.md` — item shape, coverage targets, naming
+- `references/experiment-grouping.md` — when to wrap experiments in an optimization
+- `references/scoring.md` — how to read the score table
+- `references/opik-endpoint-cheatsheet.md` — REST endpoints the scripts use
+
+## Caveat — Opik REST coupling
+
+The framework is tightly coupled to Opik's REST API. Endpoints used by `scripts/opik_client.py` are listed in `references/opik-endpoint-cheatsheet.md`. If a previously-working setup starts erroring after time has passed, suspect API drift first — check Opik release notes before debugging the framework itself.
