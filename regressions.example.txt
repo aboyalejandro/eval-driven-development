@@ -1,0 +1,33 @@
+# regressions.example.txt — baseline scenarios for stable promises
+#
+# Copy this to `regressions.txt` and populate after running
+# `references/agent-analysis.md`. Then commit `regressions.txt` in your
+# fork / working branch so it persists across sessions.
+#
+# What goes here:
+#   - 5–8 scenarios, one per core promise from the promise inventory
+#   - Pick the promises that, if broken, would make the agent useless
+#   - One concrete instance per intent (vary phrasings in the Layer 2 dataset)
+#   - Evaluator names must match the schema names in your Opik project
+#
+# Why it lives across sessions:
+#   - Avoids re-deriving baselines from scratch every iteration
+#   - Anchors regression coverage when the diff-driven agenda shifts
+#   - Run alongside diff-specific scenarios on every change
+
+# --- replace below with promises from your agent-analysis ---
+
+# baseline: response follows prescribed output contract
+# {"message": "<user message that exercises the core output shape>", "evaluators": ["<your-format-evaluator>"]}
+
+# baseline: claims grounded in fetched data, not hallucinated
+# {"message": "<data question whose answer requires a tool call>", "evaluators": ["<your-grounding-evaluator>"]}
+
+# baseline: empty / missing data handled without fabrication
+# {"message": "<request where the tool returns nothing>", "evaluators": ["<your-recovery-evaluator>"]}
+
+# baseline: off-topic ask declined or redirected
+# {"message": "<out-of-scope question>", "evaluators": ["<your-scope-evaluator>"]}
+
+# baseline: correct skill / sub-agent activates for the intent
+# {"message": "<message using a skill's trigger words verbatim>", "evaluators": ["<your-routing-evaluator>"]}

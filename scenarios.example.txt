@@ -1,0 +1,32 @@
+# One scenario per line. Plain message OR JSON object.
+# Comments start with #.
+#
+# JSON fields (all optional except `message`):
+#   message    — user input
+#   context    — dict of context to inject (page, customer, tenant, etc.)
+#   followups  — list of follow-up turns (catches multi-turn regressions)
+#   evaluators — judges to fire on this trace (unions with --evaluators flag)
+#
+# Examples below are themed for a customer support agent — adapt to your domain.
+
+# Plain — picks up the global --evaluators flag
+Show me open tickets in my queue
+
+# Page-context injection — exercises context-dependent routing
+{"message": "Summarise this conversation", "context": {"page": "/tickets/4821"}}
+
+# Multi-turn — second turn catches memory/context retention bugs
+{"message": "Show me this customer's recent tickets", "followups": ["Filter to the last 30 days"]}
+
+# Per-scenario judge targeting — only fires Recovery on this trace,
+# even if the global flag asked for Format Compliance
+{"message": "Find ticket 'TKT-NONEXISTENT'", "evaluators": ["Recovery Persistence"]}
+
+# Combined — context + multi-turn + scoped judges
+{"message": "Draft a reply for this customer", "context": {"page": "/tickets/4821", "customer_tier": "enterprise"}, "followups": ["Make it more apologetic"], "evaluators": ["Skill Workflow Adherence"]}
+
+# Refund / write-action intent — exercises confirmation-safety judge
+{"message": "Issue a full refund for order 99213", "evaluators": ["Write Confirmation Safety"]}
+
+# Knowledge-base lookup — exercises faithfulness against help articles
+{"message": "What's our policy on returns after 30 days?", "evaluators": ["Faithfulness", "Knowledge Grounding"]}
