@@ -147,12 +147,15 @@ async def _run(
     log.info("tagged: %s", ", ".join(tags))
 
     # If your judges need trace-shape normalization (e.g. tool-call summaries
-    # for OpenInference-instrumented agents), run that enrichment here before
-    # continuing. Preferred: skip --wait, run your enrichment script, then
-    # `cli.py score --since N` to trigger + poll as a separate step.
+    # for OpenInference-instrumented agents), run your enrichment script here,
+    # then use `edd score --since N` to trigger + poll as a separate step.
     # See references/trace-inspection.md for the enrichment pattern.
 
-    # 6. Pick judges, trigger evaluation.
+    if not wait:
+        log.info("run complete — traces tagged. Run enrichment then `edd score --since N`.")
+        return
+
+    # 6 + 7. --wait: pick judges, trigger, poll, print.
     evals = client.get_evaluators().get("content", [])
     project_evals = [ev for ev in evals if ev.get("project_name") == project]
 
@@ -170,15 +173,14 @@ async def _run(
         return
 
     project_id = client.get_project_id(project)
+    triggered_after = datetime.now(timezone.utc).isoformat()
     client.trigger_evaluation(project_id, trace_ids, [ev["id"] for ev in project_evals])
     log.info("triggered %d judges on %d traces", len(project_evals), len(trace_ids))
 
-    # 7. Optionally wait for scores and print the table.
-    if wait:
-        expected = {_name(ev) for ev in project_evals}
-        scored = poll_scores(client, trace_ids, timeout, expected)
-        if not print_results(scored):
-            raise typer.Exit(1)
+    expected_names = {_name(ev) for ev in project_evals}
+    scored = poll_scores(client, trace_ids, timeout, expected_names, triggered_after)
+    if not print_results(scored):
+        raise typer.Exit(1)
 
 
 @app.command()
@@ -232,11 +234,12 @@ def score(
         raise typer.Exit(1)
 
     project_id = client.get_project_id(project)
+    triggered_after = datetime.now(timezone.utc).isoformat()
     client.trigger_evaluation(project_id, trace_ids, [ev["id"] for ev in project_evals])
     log.info("triggered %d judges on %d traces", len(project_evals), len(trace_ids))
 
     expected = {_name(ev) for ev in project_evals}
-    scored = poll_scores(client, trace_ids, timeout, expected)
+    scored = poll_scores(client, trace_ids, timeout, expected, triggered_after)
     if not print_results(scored):
         raise typer.Exit(1)
 
