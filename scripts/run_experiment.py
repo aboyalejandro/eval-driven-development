@@ -41,30 +41,33 @@ console = Console()
 app = typer.Typer(add_completion=False)
 
 
-def _find_evaluator(client: OpikClient, project: str, name: str) -> dict | None:
+def _find_evaluators(client: OpikClient, project: str, names: list[str]) -> list[dict]:
     evals = client.get_evaluators().get("content", [])
     candidates = [ev for ev in evals if ev.get("project_name") == project]
-    for ev in candidates:
-        schema = (ev.get("code", {}) or {}).get("schema") or [{}]
-        if schema[0].get("name") == name or ev.get("name") == name:
-            return ev
-    return None
+    found = []
+    for name in names:
+        for ev in candidates:
+            schema = (ev.get("code", {}) or {}).get("schema") or [{}]
+            if schema[0].get("name") == name or ev.get("name") == name:
+                found.append(ev)
+                break
+        else:
+            console.print(f"[yellow]evaluator not found: {name}[/yellow]")
+    return found
 
 
 def _poll_scores(
     client: OpikClient,
     trace_ids: list[str],
-    evaluator: str,
+    evaluator_names: set[str],
     timeout: int,
 ) -> dict[str, list[dict]]:
     deadline = time.time() + timeout
     scores: dict[str, list[dict]] = {tid: [] for tid in trace_ids}
     while time.time() < deadline:
         scores = {tid: client.get_trace_scores(tid) for tid in trace_ids}
-        done = all(
-            any(s.get("name") == evaluator for s in scores[tid]) for tid in trace_ids
-        )
-        if done:
+        landed = {s.get("name") for tid in trace_ids for s in scores[tid]}
+        if evaluator_names <= landed:
             return scores
         time.sleep(5)
     return scores
@@ -102,7 +105,7 @@ def main(
     project: str = typer.Option(..., "--project", help="Opik project name."),
     dataset_name: str = typer.Option(..., "--dataset-name"),
     evaluator: str = typer.Option(
-        ..., "--evaluator", help="Schema name of the automation rule (judge)."
+        ..., "--evaluator", help="Comma-separated schema names of judges to run."
     ),
     branch_tag: str = typer.Option(
         ...,
@@ -131,12 +134,10 @@ def main(
         console.print(f"[red]dataset not found: {dataset_name}[/red]")
         raise typer.Exit(code=1)
 
-    judge = _find_evaluator(client, project, evaluator)
-    if not judge:
-        console.print(
-            f"[red]evaluator '{evaluator}' not found in project '{project}'.[/red]\n"
-            f"List with: python cli.py check (or your evaluator-listing tool)"
-        )
+    evaluator_names = [n.strip() for n in evaluator.split(",")]
+    judges = _find_evaluators(client, project, evaluator_names)
+    if not judges:
+        console.print(f"[red]no evaluators found in project '{project}'.[/red]")
         raise typer.Exit(code=1)
 
     project_id = client.get_project_id(project)
@@ -150,13 +151,16 @@ def main(
         )
         raise typer.Exit(code=1)
 
+    found_names = [
+        ((j.get("code", {}) or {}).get("schema") or [{}])[0].get("name", j.get("name", ""))
+        for j in judges
+    ]
     exp_name = experiment_name or _auto_experiment_name(dataset_name)
     plan = {
         "project": project,
         "dataset": dataset_name,
         "dataset_id": dataset_id,
-        "evaluator": evaluator,
-        "rule_id": judge["id"],
+        "evaluators": found_names,
         "traces": len(trace_ids),
         "experiment_name": exp_name,
         "optimization_name": optimization_name,
@@ -168,23 +172,22 @@ def main(
     opt_id = None
     if optimization_name:
         opt_id = _resolve_optimization(
-            client, optimization_name, dataset_id, dataset_name, evaluator
+            client, optimization_name, dataset_id, dataset_name, found_names[0]
         )
         console.print(f"optimization id={opt_id}")
 
-    client.trigger_evaluation(project_id, trace_ids, [judge["id"]])
-    console.print(f"triggered '{evaluator}' on {len(trace_ids)} traces")
+    client.trigger_evaluation(project_id, trace_ids, [j["id"] for j in judges])
+    console.print(f"triggered {len(judges)} judges on {len(trace_ids)} traces")
 
-    scores_by_trace = _poll_scores(client, trace_ids, evaluator, score_timeout)
+    scores_by_trace = _poll_scores(client, trace_ids, set(found_names), score_timeout)
     landed = sum(
-        1
-        for tid in trace_ids
-        if any(s.get("name") == evaluator for s in scores_by_trace.get(tid, []))
+        1 for tid in trace_ids
+        if any(s.get("name") in found_names for s in scores_by_trace.get(tid, []))
     )
     console.print(f"scored: {landed}/{len(trace_ids)}")
 
     metadata: dict[str, Any] = {
-        "evaluators": [evaluator],
+        "evaluators": found_names,
         "source": "eval-driven-development",
         "branch": branch_tag,
     }
@@ -226,7 +229,9 @@ def main(
         for it in items
         if (it.get("data") or it).get("source_trace_id")
     ]
-    client.create_experiment_items(exp_id, bulk_items)
+    client.create_experiment_items(
+        exp_id, bulk_items, dataset_name=dataset_name, experiment_name=exp_name
+    )
     console.print(f"[green]experiment {exp_name}[/green] (id={exp_id})")
 
     if finalize_optimization and opt_id:

@@ -256,12 +256,24 @@ class OpikClient:
             body["tags"] = tags
         self._request("POST", "/v1/private/experiments", json=body)
 
-    def create_experiment_items(self, experiment_id: str, items: list[dict]) -> None:
+    def create_experiment_items(
+        self,
+        experiment_id: str,
+        items: list[dict],
+        dataset_name: str = "",
+        experiment_name: str = "",
+    ) -> None:
         """Items carry `dataset_item_id`, `trace_id`, `input`, `output`, `feedback_scores`."""
+        # Opik 2.x: PUT (not POST); body requires datasetName + experimentName.
         self._request(
-            "POST",
+            "PUT",
             "/v1/private/experiments/items/bulk",
-            json={"experiment_id": experiment_id, "items": items},
+            json={
+                "experiment_id": experiment_id,
+                "dataset_name": dataset_name,
+                "experiment_name": experiment_name,
+                "items": items,
+            },
         )
 
     def get_experiment(self, experiment_id: str) -> dict:
