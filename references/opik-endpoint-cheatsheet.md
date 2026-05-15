@@ -1,0 +1,75 @@
+# Opik REST cheatsheet — endpoints these scripts use
+
+Base path is always `/v1/private/...`. Auth is the Bearer/raw token in the
+`Authorization` header (see `opik_client.OpikClient`).
+
+## Projects
+
+| Verb | Path | Notes |
+|---|---|---|
+| GET | `/projects?name=<n>` | Resolve `project_id` for `manual-evaluation` |
+
+## Traces
+
+| Verb | Path | Notes |
+|---|---|---|
+| GET | `/traces?project_name&filters&size` | Time-window + tag filter |
+| POST | `/traces/batch` | Body: `{trace_ids, tags_to_add}` — bulk tag |
+| GET | `/traces/{id}/feedback-scores` | Per-trace judge scores |
+| GET | `/spans?project_name&trace_id` | Pull model id from first LLM span |
+
+## Datasets
+
+| Verb | Path | Notes |
+|---|---|---|
+| GET | `/datasets?name=<n>` | Resolve dataset id |
+| POST | `/datasets` | Create (caller mints `id`) |
+| PUT | `/datasets/items` | Upsert items by their `id` |
+| GET | `/datasets/{id}/items` | Page raw items (no experiment join) |
+| GET | `/datasets/{id}/items/experiments/items?experiment_ids=[…]` | Items joined with one experiment's outputs + scores |
+
+## Experiments
+
+| Verb | Path | Notes |
+|---|---|---|
+| POST | `/experiments` | Pre-mint `id` (UUID) so bulk items can target it. Body: `{id, dataset_name, name, project_id, optimization_id?, type, status, metadata, tags}` |
+| POST | `/experiments/items/bulk` | Body: `{experiment_id, items}`. Items carry `dataset_item_id`, `trace_id`, `input`, `output`, `feedback_scores` |
+| GET | `/experiments/{id}` | Resolve dataset id, name, status |
+| GET | `/experiments?name=<n>` | Find by name |
+
+> Always pass `project_id` on experiment create. Without it, items land
+> against the Opik default project and you lose the trace deep-links.
+
+## Optimizations
+
+| Verb | Path | Notes |
+|---|---|---|
+| GET | `/optimizations?name&dataset_id` | Find existing (idempotent grouping) |
+| PUT | `/optimizations` | Upsert (caller mints `id` for reuse) |
+| GET | `/optimizations/{id}` | Status + linked experiments |
+
+`optimization_id` on `create_experiment` is the only field linking a run
+to the timeline view. Setting it after the fact requires a manual update.
+
+## Manual evaluation (automation rules)
+
+| Verb | Path | Notes |
+|---|---|---|
+| GET | `/automations/evaluators?size=500` | List rules; `code.schema[0].name` is the canonical schema name |
+| POST | `/automations/evaluators/run` | Body: `{project_id, trace_ids, rule_ids}` — async score writeback |
+
+Triggered scores write to **trace-level** `feedback_scores`. They do *not*
+auto-propagate to experiment items — `run_experiment.py` polls them off
+the traces and copies them onto the items so both layers carry the data.
+
+## Reference URL patterns
+
+| What | URL |
+|---|---|
+| Experiment | `<OPIK_URL>/experiments/<id>` |
+| Optimization | `<OPIK_URL>/optimizations/<id>` |
+| Trace | `<OPIK_URL>/traces/<id>` |
+| Dataset | `<OPIK_URL>/datasets/<id>` |
+
+`OPIK_URL` is the deployment root (`https://opik.example.com`), not the
+`/v1/private` API base.
