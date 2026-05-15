@@ -49,7 +49,13 @@ Don't run experiments against an uncalibrated LLM judge — you'll chase noise. 
 
 ## Step 4 — staging readiness
 
-The judge must be **enabled** and **sampled** in the project the sim emits to. Manual-evaluation triggers honor disabled rules, but you lose the production-parity signal — keep the rule live so the same scores appear on real traffic too.
+Two modes for the same rule. Pick one per judge — don't mix.
+
+**Manual-trigger mode (Layer 1 inner loop default):** `enabled=false`, `sampling_rate=0.0`. The framework's `trigger_evaluation` ignores both flags and fires the judge on exactly the traces you point at. Use this when sim traffic is the only thing you want scored — keeps the project clean of stray scores from concurrent dev sessions and avoids double-counting (auto-sample + manual trigger on the same trace).
+
+**Auto-sample mode (production-parity):** `enabled=true`, `sampling_rate=1.0` (or fractional). Opik scores every matching trace as it lands, including production traffic. Use when you want sim and prod scored by the same rubric and the project receives both kinds of traffic.
+
+Most teams start in manual-trigger mode for the inner loop, then enable auto-sampling per judge once the rubric is calibrated and they want it watching prod.
 
 ## Step 5 — naming hygiene
 
