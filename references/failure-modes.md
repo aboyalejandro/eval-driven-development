@@ -50,3 +50,13 @@ If you've tweaked the prompt twice and the same judge stays red, **stop tweaking
 - Wrong scenario (the scenario doesn't actually exercise the path you think it does)
 
 Two strikes on a prompt edit is a signal to widen the search, not narrow it further.
+
+**Important distinction — prompt iterations vs. re-runs:**
+
+The "two strikes" rule counts *distinct prompt edits*, not repeat runs of the same trace. LLM judges at `temperature=0` are still non-deterministic — the same trace can flip between runs on rubric-edge cases. Before counting a red as a strike:
+
+1. Re-run the same scenarios once without changing anything.
+2. If the red holds across both independent runs, it's real — count it.
+3. If it flickers (red one run, green the next), it's judge noise — don't count it.
+
+See `scoring.md` for the non-determinism rules of thumb.

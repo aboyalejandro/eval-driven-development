@@ -12,7 +12,7 @@ The framework makes three assumptions about the agent under test:
 - Accepts a message payload and returns a text response
 - Can be invoked headlessly (no UI dependency)
 
-The shipped `scripts/agent.py` adapter assumes form-encoded POST with `message` + `session_id` and a JSON response with a `content` field. If your agent's request/response shape differs, edit `arun()` — it's a starting template, not a contract you have to satisfy verbatim.
+The shipped `scripts/agent.py` adapter sends a form-encoded POST with a single `message` field and expects a JSON response with a `content` field. It is **single-turn and synchronous by default** — one request per scenario turn, no streaming, no session state. If your agent requires session tokens, streaming, or multi-turn context, edit `arun()` — it's a starting template, not a contract you have to satisfy verbatim.
 
 Any runtime that can be exposed as an HTTP endpoint works: Agno, LangGraph, Pydantic AI, FastAPI wrappers around an SDK call, raw Anthropic/OpenAI SDK calls behind a thin server, custom orchestrators. The framework doesn't care which.
 
@@ -20,7 +20,7 @@ Any runtime that can be exposed as an HTTP endpoint works: Agno, LangGraph, Pyda
 
 - Agent owns its tracing setup (OTEL exporter pointed at the Opik OTLP endpoint, or the Opik SDK)
 - This framework does *not* instrument the agent runtime — it consumes traces via Opik's REST API
-- Traces must include the agent name (`sim-{run_id}-{AGENT_NAME}` set by the adapter) so sim runs are filterable
+- Trace names are set by the agent runtime, not by this framework — the adapter's name never propagates to external agent traces. Sim runs are isolated by time window + dedicated project, not by trace name prefix.
 
 If the agent doesn't already trace to Opik, wire it up before running this loop. The eval loop is built on the premise that the same trace pipeline runs in sim and in production — that's what gives the scores production-parity.
 
@@ -28,7 +28,7 @@ If the agent doesn't already trace to Opik, wire it up before running this loop.
 
 - Hosted (`comet.com/opik`) or self-hosted instance
 - A separate project for sim traffic — never mix with production
-- Evaluator rules ("judges") defined in that project, enabled, and sampled
+- Evaluator rules ("judges") defined in that project. For the inner loop, create them with `enabled=False, sampling_rate=0` (manual-trigger mode) — the framework fires them on exactly the traces it just ran. See `references/evaluator-selection.md` Step 4 for when to switch to auto-sample.
 - API key with read access to traces and write access to datasets, experiments, automations
 
 ## Caveat: REST API coupling
@@ -57,3 +57,7 @@ This hits the Opik project endpoint and the evaluators endpoint. If it errors:
 - 404 on project → `EVAL_PROJECT` doesn't exist; create it in the Opik UI
 - Connection error → `OPIK_URL` is wrong or the instance is unreachable
 - No evaluators returned → judges haven't been defined yet; create them in the project
+
+## Judge model dependency
+
+LLM-as-judge evaluators run against the model you configure in the rule (e.g. `claude-haiku-4-5-20251001`, `gpt-4o`). The model must have a valid API key configured in your Opik workspace — the framework doesn't supply credentials. If scores never land after a trigger, check the evaluator logs at `GET /v1/private/automations/evaluators/{id}/logs`: a "no API key configured" error means the workspace has no credential for that provider. Switch to a model your workspace already has access to.

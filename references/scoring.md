@@ -44,6 +44,17 @@ If you tweak the prompt twice and the same judge stays below 0.5, stop tweaking.
 
 Two failed iterations on the same dimension is a signal to widen the search, not to keep narrowing the prompt.
 
+## Judge non-determinism
+
+LLM-as-judge scores are not fully deterministic, even at `temperature=0`. The same trace, same rubric, same model can flip between runs — 0 → 1 or 1 → 0 — on edge cases where the response is near the rubric boundary.
+
+Practical rules:
+
+- **One red ≠ confirmed failure.** Re-run the same scenarios once before acting. If the red holds across two independent runs, it's real signal.
+- **A score that flickers (red one run, green the next) is noise**, not a regression. Note it and move on unless it persists across three or more runs.
+- **Stable reds across two or more runs are actionable** — that's the judge consistently flagging the same behavior.
+- **Deltas are more reliable than absolutes.** If a prompt change moves a judge from 0 to 1 *and holds across two re-runs*, the change worked. A one-run flip is noise.
+
 ## Comparing runs
 
 Tag the run id and branch so you can compare tables across iterations in the Opik UI. The score delta between two runs of the same scenarios is the cleanest signal — absolute scores depend on judge calibration, but deltas catch real regressions.

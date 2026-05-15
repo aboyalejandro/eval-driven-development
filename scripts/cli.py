@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Eval-Driven Development CLI.
 
-python cli.py run "Hello agent" --wait
-python cli.py run scenarios.txt --wait --evaluators "Faithfulness,Format Compliance"
+python cli.py run "Hello agent"
+python cli.py run scenarios.txt --evaluators "skill-routing,output-format"
+python cli.py score --since 10          # trigger + poll judges on last N minutes of traces
 python cli.py check
 """
 
@@ -14,7 +15,7 @@ import subprocess
 import sys
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import typer
@@ -149,10 +150,10 @@ async def _run(
     log.info("tagged: %s", ", ".join(tags))
 
     # If your judges need trace-shape normalization (e.g. tool-call summaries
-    # for OpenInference-instrumented agents, or flattening provider-specific
-    # input/output shapes), run that enrichment between this tagging step and
-    # the evaluator trigger below. The framework intentionally stays neutral —
-    # see references/trace-inspection.md for the pattern.
+    # for OpenInference-instrumented agents), run that enrichment here before
+    # continuing. Preferred: skip --wait, run your enrichment script, then
+    # `cli.py score --since N` to trigger + poll as a separate step.
+    # See references/trace-inspection.md for the enrichment pattern.
 
     # 6. Pick judges, trigger evaluation.
     evals = client.get_evaluators().get("content", [])
@@ -181,6 +182,66 @@ async def _run(
         scored = poll_scores(client, trace_ids, timeout, expected)
         if not print_results(scored):
             raise typer.Exit(1)
+
+
+@app.command()
+def score(
+    project: str = typer.Option(DEFAULT_PROJECT, "--project"),
+    since: int = typer.Option(
+        10,
+        "--since",
+        help="Trigger + poll judges on traces from the last N minutes.",
+    ),
+    timeout: int = typer.Option(120),
+    evaluators: str = typer.Option(
+        None,
+        "--evaluators",
+        "-e",
+        help="Comma-separated judge names. Defaults to all project evaluators.",
+    ),
+):
+    """Trigger judges on recent traces and print the score table.
+
+    Run after `cli.py run` (and any custom enrichment) to score the traces
+    that just landed without re-running the scenarios.
+    """
+    load_dotenv()
+    flag_targets = {n.strip() for n in evaluators.split(",")} if evaluators else set()
+    client = OpikClient()
+    from_str = (
+        datetime.now(timezone.utc) - timedelta(minutes=since)
+    ).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+    traces = client.search_traces(project, from_time=from_str)
+    trace_ids = [t["id"] for t in traces]
+    if not trace_ids:
+        console.print(f"[yellow]no traces found in the last {since}m[/yellow]")
+        raise typer.Exit(1)
+    log.info("found %d traces", len(trace_ids))
+
+    evals = client.get_evaluators().get("content", [])
+    project_evals = [ev for ev in evals if ev.get("project_name") == project]
+
+    def _name(ev: dict) -> str:
+        schema = ev.get("code", {}).get("schema") or [{}]
+        return schema[0].get("name", ev.get("name", ""))
+
+    if flag_targets:
+        project_evals = [ev for ev in project_evals if _name(ev) in flag_targets]
+    # No filter by enabled — score is an explicit manual trigger; disabled judges fire too.
+
+    if not project_evals:
+        console.print("[yellow]no judges found in project — create them first[/yellow]")
+        raise typer.Exit(1)
+
+    project_id = client.get_project_id(project)
+    client.trigger_evaluation(project_id, trace_ids, [ev["id"] for ev in project_evals])
+    log.info("triggered %d judges on %d traces", len(project_evals), len(trace_ids))
+
+    expected = {_name(ev) for ev in project_evals}
+    scored = poll_scores(client, trace_ids, timeout, expected)
+    if not print_results(scored):
+        raise typer.Exit(1)
 
 
 @app.command()
