@@ -26,7 +26,8 @@ scenarios.txt
 regressions.txt
 
 # Local working notes + per-agent scratchpads (not part of the framework)
-DEFERRED.md
-LEARNINGS.md
-RESULTS.md
+# docs/ holds session artifacts (learnings, results, recap, deferred).
+# .gitkeep tracks the directory; content is gitignored.
+docs/*
+!docs/.gitkeep
 _local/
