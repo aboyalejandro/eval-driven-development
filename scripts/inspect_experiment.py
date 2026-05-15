@@ -39,10 +39,24 @@ def _resolve_experiment(
     raise typer.BadParameter("provide --experiment-id or --experiment-name")
 
 
+def _exp_scores(item: dict) -> list[dict]:
+    """Opik 2.x: joined items nest scores under experiment_items[0].feedback_scores."""
+    exp_items = item.get("experiment_items") or []
+    return (exp_items[0].get("feedback_scores") if exp_items else None) or []
+
+
+def _exp_trace_id(item: dict) -> str | None:
+    exp_items = item.get("experiment_items") or []
+    if exp_items:
+        return exp_items[0].get("trace_id")
+    data = item.get("data") or item
+    return data.get("source_trace_id")
+
+
 def _aggregate(items: list[dict], evaluator: str | None) -> dict[str, dict]:
     by_eval: dict[str, list[float]] = {}
     for it in items:
-        scores = it.get("feedback_scores") or []
+        scores = _exp_scores(it)
         for s in scores:
             name = s.get("name")
             if evaluator and name != evaluator:
@@ -82,31 +96,28 @@ def _print_failures(
 ) -> None:
     fails = []
     for it in items:
-        scores = it.get("feedback_scores") or []
+        scores = _exp_scores(it)
         for s in scores:
             name = s.get("name")
             if evaluator and name != evaluator:
                 continue
             if float(s.get("value", 1.0)) < threshold:
-                fails.append((it, name, float(s["value"])))
+                fails.append((it, name, float(s["value"]), s.get("reason", "")))
                 break
     console.print(
         f"[bold]{len(fails)}[/bold] failures below {threshold} "
         f"(showing first {min(limit, len(fails))})"
     )
     base = os.environ.get("OPIK_URL", "").rstrip("/")
-    for it, name, val in fails[:limit]:
+    for it, name, val, reason in fails[:limit]:
         data = it.get("data") or it
         msg = (data.get("user_message") or "")[:120].replace("\n", " ")
-        resp = (data.get("assistant_response") or "")[:160].replace("\n", " ")
-        tid = it.get("trace_id") or data.get("source_trace_id")
-        console.print(
-            f"  [red]{name}={val:.2f}[/red]  user={msg!r}\n"
-            f"    -> {resp!r}\n"
-            f"    trace={base}/traces/{tid}"
-            if base
-            else f"    trace={tid}"
-        )
+        tid = _exp_trace_id(it)
+        console.print(f"  [red]{name}={val:.2f}[/red]  user={msg!r}")
+        if reason:
+            console.print(f"    reason: {reason[:200]}")
+        if base and tid:
+            console.print(f"    trace: {base}/traces/{tid}")
 
 
 @app.command()
