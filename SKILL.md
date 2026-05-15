@@ -1,5 +1,5 @@
 ---
-name: eval_driven_development
+name: eval-driven-development
 description: Eval loop for LLM agents with three modes — (1) quick trace analysis with no UI artifacts, (2) full dataset + experiment in Opik, (3) targeted optimization run against a specific evaluator. Ask the user for mode (1/2/3) and aggression level (1/2/3) before starting. Use after any change to prompts, tools, skills, or model routing.
 user-invocable: true
 ---
