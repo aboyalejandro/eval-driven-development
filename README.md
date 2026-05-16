@@ -153,6 +153,6 @@ Pure UI changes, refactors that don't touch prompts or tools, bug fixes with a r
 
 ## Resources
 
-- [SKILL.md](SKILL.md) — invoke as `/eval-driven-development` in Claude Code
+- [skills/run/SKILL.md](skills/run/SKILL.md) — invoke as `/eval-driven-development:run` in Claude Code (install plugin with `--plugin-dir`)
 - [PREREQUISITES.md](PREREQUISITES.md) — integration contract + adapter pattern
 - [references/](references/) — agent analysis, evaluator selection, trace inspection, scenario design
