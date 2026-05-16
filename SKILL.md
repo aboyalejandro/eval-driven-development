@@ -59,6 +59,30 @@ After changes to prompts, tool surface, skills, model routing, or memory injecti
 
 The mode determines which phase sequence to follow below. The aggression level feeds into scenario generation — apply it when drafting `scenarios.txt` or extending `regressions.txt`.
 
+## Discovery — before any commands run
+
+After the user specifies mode and aggression level, derive everything else from the hypothesis and the agent source — do not ask the user to pre-specify evaluators, dataset names, or experiment names.
+
+1. **Read the agent** — skim the skill files, system prompt, and tool list for the surface the hypothesis touches. Extract what "correct behavior" looks like and what failure looks like. Use `references/agent-analysis.md` as the extraction guide.
+
+2. **Derive evaluator dimensions** — map each behavioral promise affected by the change to a judge dimension. Cross-reference `references/evaluator-selection.md`. Ask: which existing evaluators cover this? Which are missing? Derive names and rubrics before touching any command.
+
+3. **Check what exists** — list the project's current evaluators:
+   ```python
+   import sys; sys.path.insert(0, 'scripts')
+   from shared.opik_client import OpikClient
+   c = OpikClient()
+   evs = c.get_evaluators().get('content', [])
+   for ev in evs:
+       s = (ev.get('code', {}).get('schema') or [{}])[0]
+       print(s.get('name', ev.get('name')))
+   ```
+   Reuse any that match the derived dimensions. Create missing ones via `_local/create_evaluators.py` — only for dimensions the hypothesis actually exercises.
+
+4. **Derive scenario targets** — generate scenario intents directly from the affected skill triggers and failure modes. Dataset names, experiment names, and optimization names are minted at runtime using the pattern `<project>-<topic>-v<N>` — never pre-planned.
+
+Only after discovery is complete does execution begin.
+
 ## Mode 1 — Quick trace analysis
 
 **No Opik UI. No evaluators. Claude Code reads traces directly.**
