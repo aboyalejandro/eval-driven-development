@@ -182,34 +182,51 @@ Two *prompt iterations* on the same red judge = stop tweaking the prompt, widen 
 
 ## Mode 3 — Optimization run
 
-**Targeted prompt change → single evaluator → Opik optimization studio.**
+Two paths — choose based on whether your agent is a direct LLM call or an HTTP service:
 
-Use when you know which dimension is failing and you want to iterate on the fix with a measurable, comparable timeline. The difference from Mode 2: you pick one evaluator to anchor the optimization, make a focused change, and let the studio show the delta.
+### 3A — Manual comparison (any HTTP agent)
 
-1. **Identify the dimension** — one failing evaluator, one prompt section to change.
-2. **Make the change** in the agent repo (skill file, system prompt section, tool description).
-3. **Generate scenarios** focused on that dimension at the chosen aggression level. Write to `scenarios.txt`.
-4. **Run the inner loop** to verify the change moves the needle before committing to an experiment:
+Target one failing dimension, make a focused change, compare baseline vs. post-fix on a shared Opik optimization timeline. Works for any agent type.
+
+1. Identify the dimension and the prompt section to change (skill file, system prompt, tool description).
+2. Make the change in the agent repo.
+3. Run inner loop focused on that dimension:
    ```bash
    edd run scenarios.txt
    python _local/enrich_traces.py --since-minutes 5
    edd score --since 10 --evaluators "<target-evaluator>"
    ```
-5. **Build dataset and run experiment** under an optimization name so baseline and post-change land on the same timeline:
+4. Build dataset and run experiment under a shared optimization name:
    ```bash
    edd-build --project <p> --dataset-name <p>-<topic>-v<N> \
      --branch-tag sim-$(git rev-parse --abbrev-ref HEAD)
    edd-run --project <p> --dataset-name <p>-<topic>-v<N> \
      --evaluator "<target-evaluator>" \
-     --branch-tag sim-$(git rev-parse --abbrev-ref HEAD) \
      --optimization-name <topic>-baseline-vs-fix \
      --experiment-name <topic>-post-fix
    ```
-6. **Finalize** when the comparison run is the last one:
+5. Finalize and inspect the timeline delta:
    ```bash
-   edd-run ... --optimization-name <topic>-baseline-vs-fix --finalize-optimization
+   edd-run ... --finalize-optimization
+   edd-inspect --experiment-name <topic>-post-fix
    ```
-7. Inspect the optimization timeline in the Opik UI — score delta is the signal.
+
+### 3B — Studio optimization (direct-LLM prompts only)
+
+Uses `opik_optimizer.MetaPromptOptimizer` to automatically generate improved prompt variants and score them with a custom metric. Works when the prompt drives a direct LLM call — **not** when the agent is a multi-skill HTTP service (Agno, etc.) without a custom `OptimizableAgent` wrapper.
+
+```bash
+pip install opik-optimizer   # not in core deps
+python _local/run_optimization.py --trials 3 --samples 5
+```
+
+`_local/run_optimization.py` — per-agent script (gitignored):
+- `prompt`: the skill instructions or system prompt section to optimize
+- `metric`: a function `(dataset_item, llm_output) -> float` scoring the output
+- `dataset`: an Opik dataset with `{user_message}` field per item
+- `optimize_prompts="system"` — only the system prompt is mutated; user template is fixed
+
+**Limitation for HTTP agents:** The optimizer calls the LLM directly, bypassing your agent's runtime. If your agent loads skills dynamically (like Agno), the optimizer's baseline may be 1.0 even when the real agent scores 0 — the skill instructions are correct, but the agent's skill loader applies them differently. In that case, use 3A (manual comparison) and investigate the runtime layer.
 
 ## Files
 

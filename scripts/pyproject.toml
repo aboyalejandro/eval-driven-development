@@ -14,6 +14,16 @@ dependencies = [
     "opik>=2.0.36",
 ]
 
+# Mode 3B studio optimization — install separately when needed.
+# opik-optimizer is NOT in core deps: it pulls in heavy ML deps (litellm, etc.)
+# and is only needed for automated prompt optimization (MetaPromptOptimizer).
+# Usage: pip install opik-optimizer
+#        python _local/run_optimization.py
+[project.optional-dependencies]
+studio = [
+    "opik-optimizer>=3.1.0",
+]
+
 [project.scripts]
 edd        = "setup.cli:app"
 edd-build  = "simulation.build_dataset:app"

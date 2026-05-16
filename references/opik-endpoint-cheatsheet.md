@@ -54,11 +54,35 @@ Base path is always `/v1/private/...`. Auth is the Bearer/raw token in the
 | Verb | Path | Notes |
 |---|---|---|
 | GET | `/optimizations?name&dataset_id` | Find existing (idempotent grouping) |
-| PUT | `/optimizations` | Upsert (caller mints `id` for reuse) |
-| GET | `/optimizations/{id}` | Status + linked experiments |
+| PUT | `/optimizations` | Upsert. Body: `{id, name, dataset_name, objective_name, status, studio_config?}` |
+| POST | `/optimizations` | Create. Same body as PUT. |
+| GET | `/optimizations/{id}` | Status + linked experiments + `best_objective_score` |
+| GET | `/optimizations/studio/{id}/logs` | Presigned S3 URL for studio run logs |
 
 `optimization_id` on `create_experiment` is the only field linking a run
 to the timeline view. Setting it after the fact requires a manual update.
+
+**Two optimization modes:**
+
+*Manual comparison* (what `edd-run --optimization-name` does) — upsert an optimization,
+attach multiple experiments to it with `optimization_id`. No `studio_config` needed.
+The UI shows experiments side-by-side on the same timeline.
+
+*Studio automation* (what `opik_optimizer` does) — include `studio_config` in the
+upsert body:
+```json
+{
+  "studio_config": {
+    "dataset_name": "my-dataset",
+    "prompt": {"messages": [{"role": "system", "content": "..."}, {"role": "user", "content": "{var}"}]},
+    "llm_model": {"model": "anthropic/claude-haiku-4-5-20251001"},
+    "evaluation": {"metrics": [{"type": "custom_metric_fn"}]},
+    "optimizer": {"type": "metaprompt"}
+  }
+}
+```
+The `opik_optimizer` Python SDK handles this automatically. Use `pip install opik-optimizer`
+and `MetaPromptOptimizer.optimize_prompt()` rather than constructing `studio_config` by hand.
 
 ## Manual evaluation (automation rules)
 
