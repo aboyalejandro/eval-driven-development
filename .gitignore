@@ -31,5 +31,3 @@ regressions.txt
 docs/*
 !docs/.gitkeep
 _local/
-INTERVIEW.md
-NEXT_STEPS.md
