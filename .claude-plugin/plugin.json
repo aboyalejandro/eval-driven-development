@@ -1,0 +1,7 @@
+{
+  "name": "eval-driven-development",
+  "description": "Eval loop for LLM agents — guided setup, scenario runs, judge scoring, dataset experiments",
+  "version": "1.0.0",
+  "author": { "name": "Alejandro Aboy" },
+  "repository": "https://github.com/aboyalejandro/eval-driven-development"
+}
