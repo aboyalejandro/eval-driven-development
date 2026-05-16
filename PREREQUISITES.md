@@ -18,6 +18,46 @@ Default HTTP timeout is **300 seconds**. Agents that call multiple MCP tools seq
 
 Any runtime that can be exposed as an HTTP endpoint works: Agno, LangGraph, Pydantic AI, FastAPI wrappers around an SDK call, raw Anthropic/OpenAI SDK calls behind a thin server, custom orchestrators. The framework doesn't care which.
 
+#### Customising the HTTP adapter
+
+If your agent's contract differs from the default, set `AGENT_ADAPTER` in `.env`:
+
+```
+AGENT_ADAPTER=_local.my_adapter:create_agent
+```
+
+The adapter module must live in `_local/` (gitignored) and expose a `create_agent` function with this signature:
+
+```python
+# _local/my_adapter.py
+import httpx, os
+from types import SimpleNamespace
+
+AGENT_ENDPOINT = os.getenv("AGENT_ENDPOINT")
+
+async def create_agent(session_id: str, run_id: str, context: dict | None = None):
+    class AgentProxy:
+        def __init__(self):
+            self.name = f"sim-{run_id}"
+            self._session_id = session_id
+
+        async def arun(self, message: str):
+            async with httpx.AsyncClient(timeout=300.0) as client:
+                resp = await client.post(
+                    AGENT_ENDPOINT,
+                    headers={"Authorization": f"Bearer {os.getenv('AGENT_TOKEN')}"},
+                    json={"input": message, "thread_id": self._session_id},
+                )
+                resp.raise_for_status()
+                return SimpleNamespace(content=resp.json()["text"])
+
+    return AgentProxy()
+```
+
+Only override what differs — body shape, field names, auth, timeout, response parsing. Leave `AGENT_ADAPTER` unset when the generic default matches your agent (most REST agents do).
+
+The substack-author-agent (Agno, Anthropic SDK, OpenAI Agents SDK) all work with the generic default — verified with one trace each, no adapter needed.
+
 ### 2. Agent emits traces to Opik directly
 
 - Agent owns its tracing setup (OTEL exporter pointed at the Opik OTLP endpoint, or the Opik SDK)

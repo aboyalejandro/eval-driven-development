@@ -292,13 +292,14 @@ and version these files themselves (in their fork or working branch):
 |---|---|
 | `_local/create_evaluators.py` | Create LLM-as-judge rules in your Opik project. Define rubrics from your agent's promise inventory (see `references/agent-analysis.md`). Re-run whenever rubrics change. |
 | `_local/enrich_traces_<sdk>.py` | Normalize trace shape for your judges. Walk spans, extract `user_message`, `assistant_response`, `tools_called`, `tool_outputs`, patch `metadata.*`. Run between `edd run` and `edd score`. Write one per SDK when multiple SDKs share an Opik project — each script must discriminate its own traces and skip the rest. See `references/trace-inspection.md`. |
-| `_local/<runtime>_extractor.py` | Custom `--extractor` for `edd-build` when your runtime emits trace paths that differ from the default (`trace.input.user_message` / `trace.output.assistant_response`). One function, importable from repo root. |
+| `_local/<runtime>_extractor.py` | Custom `--extractor` for `edd-build` when your runtime emits trace paths that differ from defaults. One function returning `{user_message, assistant_response}` per trace, importable from repo root. |
+| `_local/my_adapter.py` | **Optional.** Custom HTTP adapter when your agent's contract differs from the generic default (`{"message", "session_id"}` → `{"content"}`). Set `AGENT_ADAPTER=_local.my_adapter:create_agent` in `.env`. Leave unset for standard REST agents. See `PREREQUISITES.md`. |
 | `scenarios.txt` (root) | Diff-specific scenarios for the current session. Regenerated per branch. |
 | `regressions.txt` (root) | Stable baseline scenarios covering the agent's core promises. Commit this in your fork — it persists across sessions. |
 
 **Two places for runtime-specific code — different purposes:**
 
-`scripts/setup/agent.py` is a **template you edit directly and commit in your fork**. Runtime-specific fields (session tokens, streaming flags, auth schemes, structured context) go in `arun()`. This defines how your agent receives requests and is part of your fork's versioned code.
+`scripts/setup/agent.py` is the **framework core — do not edit it**. It loads `AGENT_ADAPTER` from `.env` if set; otherwise uses the generic JSON default. Runtime-specific fields (different body shape, field names, auth, timeout) go in `_local/my_adapter.py` and are referenced via the env var.
 
 `_local/` is **gitignored scratchpad** for per-agent configuration that shouldn't be in the framework repo at all — rubrics, enrichment scripts, extractors. Never commit `_local/` to the framework remote; it encodes your agent's specifics and would break other users' setups.
 
@@ -306,6 +307,7 @@ and version these files themselves (in their fork or working branch):
 
 - `create_evaluators.py`: One judge per promise from your agent's inventory. Use the scoring convention: 1 = explicitly verified correct, 0 = failed OR not applicable (not tested). Document the variable paths your judges use — they depend on your trace shape.
 - `enrich_traces_<sdk>.py`: Run after `edd run`, before `edd score`. Each script must (1) skip traces it doesn't own (SDK discriminator check on trace input keys or metadata), (2) write `user_message` + `assistant_response` + `tools_called` + `tool_outputs` to `metadata.*`. Evaluators read only from `metadata.*` — they never touch native SDK trace paths. See `references/trace-inspection.md` for extraction patterns per SDK.
+- `my_adapter.py`: Only needed when the agent's HTTP contract differs from the generic default. Implement `create_agent(session_id, run_id, context)` returning an object with `arun(message) → SimpleNamespace(content=...)`. See `PREREQUISITES.md` for the full interface and examples.
 - `<runtime>_extractor.py`: One function returning a dict per trace, importable from repo root. Pass via `--extractor` to `edd-build`.
 
 To start fresh with a new agent: copy the `.example.txt` templates, run `references/agent-analysis.md` extraction, then derive `_local/create_evaluators.py` from the promise inventory.

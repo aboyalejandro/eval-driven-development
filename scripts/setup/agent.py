@@ -1,27 +1,29 @@
 """Headless agent runner — HTTP adapter.
 
-The framework assumes the agent under test is reachable over HTTP. This adapter
-is a starting template: edit `arun()` if your agent's request/response shape
-differs from the default contract below.
+The framework assumes the agent under test is reachable over HTTP.
 
-Default contract (truly generic — nothing runtime-specific):
+Default contract (JSON, session-aware):
     POST {AGENT_ENDPOINT}
     Content-Type: application/json
     body: {"message": <str>, "session_id": <str>}
     response: JSON with `content` field containing the assistant reply
 
-The framework mints `self._session_id` on the AgentProxy for multi-turn scenarios
-and sends it in the JSON body by default. If your agent uses a different field name
-(e.g. `thread_id` for OpenAI Assistants) or a different transport shape, adapt
-`arun()` in your fork. Same goes for streaming control, auth schemes, and
-runtime-specific context fields.
+If your agent's HTTP contract differs (different body shape, field names,
+auth scheme, response field, timeout, etc.), set AGENT_ADAPTER in .env:
 
-The agent is responsible for its own OTEL → Opik tracing. This adapter does not
-instrument the agent runtime; it only invokes the endpoint and relays the text
-response. See `PREREQUISITES.md` for the full integration contract.
+    AGENT_ADAPTER=_local.my_adapter:create_agent
+
+The adapter module must expose `create_agent(session_id, run_id, context)`
+returning an object with `arun(message) -> SimpleNamespace(content=<str>)`.
+See `PREREQUISITES.md` for the full contract and adapter examples.
+
+The agent is responsible for its own OTEL → Opik tracing. This adapter only
+invokes the endpoint and relays the text response.
 """
 
+import importlib
 import os
+import sys
 import uuid
 from types import SimpleNamespace
 
@@ -31,16 +33,32 @@ from dotenv import load_dotenv
 load_dotenv()
 
 AGENT_ENDPOINT = os.getenv("AGENT_ENDPOINT")
-AGENT_AUTH = os.getenv("AGENT_AUTH")  # optional, sent as Authorization header
-AGENT_NAME = os.getenv("AGENT_NAME", "agent")  # informational only
+AGENT_AUTH = os.getenv("AGENT_AUTH")
+AGENT_NAME = os.getenv("AGENT_NAME", "agent")
 
 
-async def create_agent(
+def _load_adapter():
+    """Load create_agent from AGENT_ADAPTER if set, else return None."""
+    adapter_path = os.getenv("AGENT_ADAPTER")
+    if not adapter_path:
+        return None
+    mod_path, fn_name = adapter_path.rsplit(":", 1)
+    # Ensure repo root is on sys.path so _local.* imports resolve.
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+    mod = importlib.import_module(mod_path)
+    return getattr(mod, fn_name)
+
+
+_adapter_create_agent = _load_adapter()
+
+
+async def _default_create_agent(
     session_id: str,
     run_id: str,
     context: dict | None = None,
 ):
-    """Return an object with `arun(message)` that calls the agent over HTTP."""
     if not AGENT_ENDPOINT:
         raise RuntimeError(
             "AGENT_ENDPOINT is not set. Configure it in .env (see .env.example)."
@@ -74,6 +92,20 @@ async def create_agent(
             return SimpleNamespace(content=data.get("content", ""))
 
     return AgentProxy()
+
+
+async def create_agent(
+    session_id: str,
+    run_id: str,
+    context: dict | None = None,
+):
+    """Return an object with `arun(message)` that calls the agent over HTTP.
+
+    Uses AGENT_ADAPTER if set, otherwise the generic JSON default.
+    """
+    if _adapter_create_agent:
+        return await _adapter_create_agent(session_id, run_id, context)
+    return await _default_create_agent(session_id, run_id, context)
 
 
 async def run_scenario(
