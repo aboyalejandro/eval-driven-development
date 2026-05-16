@@ -14,14 +14,15 @@ Three primitives:
 2. **Traces** — every run emits structured spans (inputs, tool calls, outputs) into Opik.
 3. **Judges** — Opik evaluators score traces on dimensions you care about. Code-based where deterministic, LLM-as-judge where subjective.
 
-Two layers of loop over those primitives:
+Three modes over those primitives — choose based on how much signal you need:
 
 ```
-inner loop:  edit → run scenarios → score traces → read table → fix or ship
-outer loop:  curate dataset → run experiment → compare on timeline → keep or roll back
+Mode 1 (minutes):  run scenarios → read traces inline → fix or ship
+Mode 2 (hours):    run scenarios → score with judges → build dataset → run experiment → compare
+Mode 3 (days):     target one failing dimension → optimize prompt → compare variants on timeline
 ```
 
-The inner loop is minutes. The outer loop adds a durable, reviewable artifact: the dataset and the experiments scored against it. Same trace surface, same judges — different shelf life.
+Mode 1 is fast signal with no scoring infrastructure. Mode 2 adds durable, reviewable artifacts — the dataset and experiments survive the session. Mode 3 anchors the iteration to a single evaluator and tracks improvement across prompt versions. All three share the same trace surface and judge layer.
 
 ## Why not hosted experiment runners alone
 
