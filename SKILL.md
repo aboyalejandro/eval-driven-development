@@ -72,7 +72,6 @@ Use when you want fast signal on what the agent actually did — trace inputs, o
    ```
 3. Fetch and inspect the traces inline:
    ```python
-   from dotenv import load_dotenv; load_dotenv('.env')
    from shared.opik_client import OpikClient
    c = OpikClient()
    traces = c.search_traces(project, from_time='<since>')
@@ -239,7 +238,7 @@ python _local/run_optimization.py --trials 3 --samples 5
 
 | Path | Command | Purpose |
 |------|---------|---------|
-| `scripts/setup/agent.py` | — | **Wire your runtime here** — `create_agent` factory; edit `arun()` for your HTTP contract |
+| `scripts/setup/agent.py` | — | Generic HTTP adapter — do not edit. Set `AGENT_ADAPTER=_local.my_adapter:create_agent` in `.env` to override for non-standard contracts. |
 | `scripts/setup/cli.py` | `edd` | Orchestrator — emit scenarios, tag traces, trigger judges, poll scores |
 | `scripts/setup/results.py` | — | Score table renderer with inline judge reasons |
 | `scripts/shared/opik_client.py` | — | Opik REST wrapper (traces, datasets, experiments, evaluators) |
