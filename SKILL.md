@@ -14,17 +14,30 @@ Three modes, same trace surface:
 
 **Mode 3 — Optimization run.** Target a single evaluator on a specific prompt change. Runs Opik's optimization studio, freezing the changed section and comparing variants on the same timeline. Best for deliberate prompt engineering with a measurable objective.
 
-Each mode supports three aggression levels — see the **Aggression levels** section.
+Each mode supports three aggression levels (1 = harness, 2 = mixed, 3 = adversarial) — see `references/scenario-design.md`.
 
-For rationale see `README.md`. Mid-loop references:
+## References — when to load each
 
-- `references/scenario-design.md` — branch diff → scenarios + judges to fire
-- `references/scoring.md` — reading the score table, judge biases
-- `references/failure-modes.md` — red judge → likely fix surface
-- `references/evaluator-selection.md` — which judge to anchor a dataset on
-- `references/dataset-design.md` — item shape, naming, coverage, versioning
-- `references/experiment-grouping.md` — when + how to wrap runs under an Optimization
-- `references/opik-endpoint-cheatsheet.md` — REST surface the scripts touch
+**Before first run** (read once when setting up a new agent):
+- `PREREQUISITES.md` — integration contract; Opik REST caveat; judge model workspace dep
+- `references/agent-analysis.md` — extract promise inventory from agent source
+- `references/trace-inspection.md` — find your trace shape; design enrichment for `_local/`
+- `references/evaluator-selection.md` — dimensions from promises → judges; scoring convention
+- `references/scenario-design.md` — scenario intents from promises; aggression levels
+
+**During setup loop** (open when reading scores or diagnosing a failure):
+- `references/scoring.md` — score table thresholds; judge biases; non-determinism rules
+- `references/failure-modes.md` — red judge → likely fix surface (symptom-first)
+
+**During simulation / optimization** (open when building datasets or experiments):
+- `references/dataset-design.md` — item shape, extractor pattern, coverage, naming
+- `references/experiment-grouping.md` — when and how to wrap runs under an Optimization
+
+**If the REST layer breaks** (open when scripts error on Opik endpoints):
+- `references/opik-endpoint-cheatsheet.md` — all endpoint shapes the scripts use
+
+**Rationale** (open if someone asks why this approach):
+- `README.md`
 
 ## When to invoke
 
@@ -59,7 +72,6 @@ Use when you want fast signal on what the agent actually did — trace inputs, o
    ```
 3. Fetch and inspect the traces inline:
    ```python
-   import sys; sys.path.insert(0, 'scripts')
    from dotenv import load_dotenv; load_dotenv('.env')
    from shared.opik_client import OpikClient
    c = OpikClient()
@@ -199,56 +211,20 @@ Use when you know which dimension is failing and you want to iterate on the fix 
    ```
 7. Inspect the optimization timeline in the Opik UI — score delta is the signal.
 
-## Aggression levels
-
-Apply when generating `scenarios.txt` from the promise inventory (`references/agent-analysis.md`). The level determines how hard scenarios push the agent against its own harness, heuristics, and evaluators.
-
-### Level 1 — Harness validation
-
-Normal user flows. Exact trigger phrases from the skill definitions. Happy paths where data exists and the agent should succeed cleanly. Tests that the core harness works — right skill fires, tools are called, output structure is correct.
-
-*Example for analyze-articles:* "How are my recent articles performing on [publication-url]?"
-
-### Level 2 — Mixed (level 1 + edge cases)
-
-Level 1 scenarios plus: partial trigger phrases, adjacent intents that *might* activate the wrong skill, multi-turn sessions where context shifts mid-way, requests where the tool returns data but the agent might format it incompletely, scenarios where one tool fires but a dependent tool is skipped.
-
-*Example additions:* "What about my writing — what's landing?" (ambiguous trigger), "Which one did best, and what about the format?" (multi-turn, shifts skill mid-session)
-
-### Level 3 — Adversarial
-
-Mostly edge cases designed to surface harness failures. Conflicting instructions, inputs near skill boundaries that might route incorrectly, scenarios where the agent might fabricate (empty result + specific-sounding ask), near-miss out-of-scope asks that test the agent's refusal precision, requests that require multiple dependent tool calls where any one could be skipped.
-
-*Focus:* not "does the happy path work" but "where does the harness break, what does the agent do when data is missing or ambiguous, can the routing be tricked."
-
-Since the goal is to evaluate tool outputs (not just responses), Level 3 scenarios should specifically stress the paths where tool calls might not fire, fire incompletely, or return unexpected shapes.
-
 ## Files
 
 | Path | Command | Purpose |
 |------|---------|---------|
-| `scripts/setup/cli.py` | `edd` | Setup orchestrator — run scenarios, tag traces, trigger judges, poll scores |
-| `scripts/setup/agent.py` | — | **Wire your runtime here** — `create_agent` factory + OTEL |
-| `scripts/setup/results.py` | — | Polls scores, renders the per-dimension table with inline reasons |
-| `scripts/shared/opik_client.py` | — | REST wrapper (traces, datasets, experiments, optimizations, evaluators) |
-| `scripts/simulation/build_dataset.py` | `edd-build` | Simulation — sim traces → Opik dataset |
-| `scripts/simulation/run_experiment.py` | `edd-run` | Simulation — dataset → experiment (optional optimization grouping) |
-| `scripts/simulation/inspect_experiment.py` | `edd-inspect` | Simulation — experiment digest + failure surface |
-| `scripts/pyproject.toml` | — | Dependencies + entry points |
-| `scenarios.example.txt` | — | Sample scenarios (root — copy to `scenarios.txt`, gitignored) |
-| `regressions.example.txt` | — | Baseline scenarios (root — copy to `regressions.txt`, gitignored) |
-| `.env.example` | — | Required env vars (root) |
-| `PREREQUISITES.md` | — | **Read first** — integration contract + Opik REST coupling caveat |
-| `references/agent-analysis.md` | — | Extract promise inventory from agent source |
-| `references/trace-inspection.md` | — | Inspect trace shape + write enrichment if judges need normalization |
-| `references/scenario-design.md` | — | Promise → scenario intent → instances (setup) |
-| `references/evaluator-selection.md` | — | Derive dimensions from promises, then pick / build judges |
-| `references/failure-modes.md` | — | Red judge → likely fix surface (symptom-first) |
-| `references/scoring.md` | — | Reading the score table |
-| `references/dataset-design.md` | — | Item shape, naming, coverage (simulation) |
-| `references/experiment-grouping.md` | — | Optimization timelines (simulation) |
-| `references/opik-endpoint-cheatsheet.md` | — | REST surface the scripts touch |
-| `README.md` | — | Rationale |
+| `scripts/setup/agent.py` | — | **Wire your runtime here** — `create_agent` factory; edit `arun()` for your HTTP contract |
+| `scripts/setup/cli.py` | `edd` | Orchestrator — emit scenarios, tag traces, trigger judges, poll scores |
+| `scripts/setup/results.py` | — | Score table renderer with inline judge reasons |
+| `scripts/shared/opik_client.py` | — | Opik REST wrapper (traces, datasets, experiments, evaluators) |
+| `scripts/simulation/build_dataset.py` | `edd-build` | Sim traces → Opik dataset |
+| `scripts/simulation/run_experiment.py` | `edd-run` | Dataset → experiment (optional optimization grouping) |
+| `scripts/simulation/inspect_experiment.py` | `edd-inspect` | Experiment digest + failure surface |
+| `scenarios.example.txt` | — | Copy to `scenarios.txt` (gitignored) |
+| `regressions.example.txt` | — | Copy to `regressions.txt` (gitignored) |
+| `.env.example` | — | Required env vars |
 
 ## Prerequisites
 

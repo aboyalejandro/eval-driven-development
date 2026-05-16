@@ -76,3 +76,19 @@ Write messages as a real user would type them, not as a test engineer would. Sli
 - Scenarios for promises the diff doesn't touch — neutral noise, wasted tokens.
 - Multi-turn scenarios unless the diff touches session memory or follow-up routing.
 - "All possible phrasings" — wording variants belong in the simulation dataset, not the setup loop.
+
+## Aggression levels
+
+The level determines how hard scenarios push the agent against its own harness, heuristics, and evaluators. Apply it when generating `scenarios.txt` from the promise inventory. Since the goal is to evaluate tool outputs (not just responses), higher levels should specifically stress the paths where tool calls might not fire, fire incompletely, or return unexpected shapes.
+
+### Level 1 — Harness validation
+
+Normal user flows. Exact trigger phrases from the skill definitions. Happy paths where data exists and the agent should succeed cleanly. Tests that the core harness works — right skill fires, tools are called, output structure is correct.
+
+### Level 2 — Mixed
+
+Level 1 scenarios plus: partial trigger phrases, adjacent intents that might activate the wrong skill, multi-turn sessions where context shifts mid-way, requests where a tool returns data but the agent might format it incompletely.
+
+### Level 3 — Adversarial
+
+Mostly edge cases designed to surface harness failures. Conflicting instructions, inputs near skill boundaries that might route incorrectly, scenarios where the agent might fabricate (empty result + specific-sounding ask), near-miss out-of-scope asks, requests that require multiple dependent tool calls where any one could be skipped. Focus: not "does the happy path work" but "where does the harness break."
