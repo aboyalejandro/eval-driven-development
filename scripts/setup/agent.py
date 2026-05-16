@@ -6,15 +6,15 @@ differs from the default contract below.
 
 Default contract (truly generic — nothing runtime-specific):
     POST {AGENT_ENDPOINT}
-    Content-Type: application/x-www-form-urlencoded
-    body: message=<str>
+    Content-Type: application/json
+    body: {"message": <str>, "session_id": <str>}
     response: JSON with `content` field containing the assistant reply
 
-The framework mints `self._session_id` on the AgentProxy for multi-turn scenarios.
-If your agent supports session continuity (Agno/AgentOS uses `session_id`, OpenAI
-Assistants uses `thread_id`, etc.), transmit it from `self._session_id` inside
-your customised arun(). Same goes for streaming control, auth schemes, structured
-context, and any other runtime-specific fields — adapt arun() in your fork.
+The framework mints `self._session_id` on the AgentProxy for multi-turn scenarios
+and sends it in the JSON body by default. If your agent uses a different field name
+(e.g. `thread_id` for OpenAI Assistants) or a different transport shape, adapt
+`arun()` in your fork. Same goes for streaming control, auth schemes, and
+runtime-specific context fields.
 
 The agent is responsible for its own OTEL → Opik tracing. This adapter does not
 instrument the agent runtime; it only invokes the endpoint and relays the text
@@ -58,7 +58,7 @@ async def create_agent(
                 qualifier = ", ".join(f"{k}: {v}" for k, v in self._context.items())
                 full_message = f"{message} ({qualifier})"
 
-            headers = {"Content-Type": "application/x-www-form-urlencoded"}
+            headers = {"Content-Type": "application/json"}
             if AGENT_AUTH:
                 headers["Authorization"] = AGENT_AUTH
 
@@ -66,7 +66,7 @@ async def create_agent(
                 resp = await client.post(
                     AGENT_ENDPOINT,
                     headers=headers,
-                    data={"message": full_message},
+                    json={"message": full_message, "session_id": self._session_id},
                 )
                 resp.raise_for_status()
                 data = resp.json()

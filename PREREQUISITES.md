@@ -12,7 +12,7 @@ The framework makes three assumptions about the agent under test:
 - Accepts a message payload and returns a text response
 - Can be invoked headlessly (no UI dependency)
 
-The shipped `scripts/agent.py` adapter sends a form-encoded POST with a single `message` field and expects a JSON response with a `content` field. It is **single-turn and synchronous by default** — one request per scenario turn, no streaming, no session state. If your agent requires session tokens, streaming, or multi-turn context, edit `arun()` — it's a starting template, not a contract you have to satisfy verbatim.
+The shipped `scripts/agent.py` adapter sends a JSON POST with `{"message": "...", "session_id": "..."}` and expects a JSON response with a `content` field. It is **synchronous by default** — one request per scenario turn, no streaming. Session ID is sent on every turn (multi-turn continuity is opt-in at the agent side). If your agent uses a different field name (e.g. `thread_id`), a different body shape, or streaming, edit `arun()` — it's a starting template, not a contract you have to satisfy verbatim.
 
 Any runtime that can be exposed as an HTTP endpoint works: Agno, LangGraph, Pydantic AI, FastAPI wrappers around an SDK call, raw Anthropic/OpenAI SDK calls behind a thin server, custom orchestrators. The framework doesn't care which.
 

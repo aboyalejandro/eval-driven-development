@@ -67,8 +67,58 @@ Once the inventory is complete: read `trace-inspection.md` to map your trace sha
 
 The distinction matters because baseline evaluators need calibration investment. Generated ones are cheap but ephemeral — promote them only after they prove stable.
 
+## How to run the agent
+
+This section covers the substack-author-agent, which runs as a unified FastAPI server serving three SDK implementations.
+
+### Startup
+
+```bash
+cd ~/Desktop/Repos/substack-author-agent
+source .venv/bin/activate
+nohup python server.py > /tmp/substack-server.log 2>&1 &
+# confirm it's up:
+curl http://localhost:7777/agents
+```
+
+### Available agents
+
+```
+POST http://localhost:7777/agents/agno/runs    — Agno SDK
+POST http://localhost:7777/agents/claude/runs  — Anthropic SDK
+POST http://localhost:7777/agents/openai/runs  — OpenAI Agents SDK
+```
+
+All three accept: `{"message": "...", "session_id": "..."}` → `{"content": "...", ...}`
+
+### Targeting one SDK in the eval framework
+
+Update `.env` in the eval repo:
+```
+AGENT_ENDPOINT=http://localhost:7777/agents/claude/runs   # or agno or openai
+EVAL_PROJECT=substack-author-agent
+```
+
+All three agents trace to the same Opik project (`substack-author-agent`).
+
+### Tracing per SDK
+
+| SDK | Tracing method | Span convention |
+|-----|---------------|-----------------|
+| `agno` | `AgnoInstrumentor` + OTEL/OTLP | OpenInference spans |
+| `claude` | `opik.integrations.anthropic.track_anthropic` | Opik native Anthropic |
+| `openai` | `opik.integrations.openai.agents.OpikTracingProcessor` | Opik native OpenAI Agents |
+
+After each SDK run, use the matching enrichment script before scoring:
+- `python _local/enrich_traces.py` for Agno
+- `python _local/enrich_traces_claude.py` for Anthropic SDK
+- `python _local/enrich_traces_openai.py` for OpenAI Agents SDK
+
+---
+
 ## Anti-patterns
 
 - **Skipping this step and using a taxonomy.** You end up with evaluators that don't map to what the agent actually does, and scenarios that test nothing real.
 - **Treating all promises as baseline.** `regressions.txt` bloats; every run fires 30 evaluators; signal drowns in noise.
 - **Extracting promises without reading the output format.** The scenario generates an answer in the wrong shape and the judge fires for the wrong reason.
+- **Running enrichment without SDK discrimination.** One script overwrites another SDK's metadata with empty/wrong values. Each enrichment script must skip traces it doesn't own.

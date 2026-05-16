@@ -77,9 +77,16 @@ Use when you want fast signal on what the agent actually did — trace inputs, o
    c = OpikClient()
    traces = c.search_traces(project, from_time='<since>')
    for t in traces:
-       print(t['id'][:8], (t.get('input') or {}).get('input.value', '')[:80])
-       print(' ->', (t.get('output') or {}).get('output.value', '')[:160])
+       inp = t.get('input') or {}
+       out = t.get('output') or {}
        meta = t.get('metadata') or {}
+       # Input/output paths vary by SDK — read references/trace-inspection.md for your convention:
+       # Agno/OpenInference:  inp.get('input.value'), out.get('output.value')
+       # Anthropic SDK:       inp.get('message'), out.get('output')
+       # OpenAI Agents SDK:   inp.get('input',[{}])[0].get('content'), extract from out.get('output',[])
+       # After enrichment, all SDKs: meta.get('user_message'), meta.get('assistant_response')
+       print(t['id'][:8], str(inp)[:80])
+       print(' ->', str(out)[:160])
        print('  tools:', meta.get('tools_called', []))
    ```
 4. Report findings directly in the conversation — what the agent did, what it missed, what looks off. No dataset needed.
@@ -99,11 +106,11 @@ Use when you want fast signal on what the agent actually did — trace inputs, o
 
    *With enrichment (your runtime needs trace normalization before judges fire):*
    ```bash
-   edd run scenarios.txt                            # emit + tag, exit
-   python _local/enrich_traces.py --since-minutes 5 # your enrichment step
-   edd score --since 10                             # trigger judges + poll + print table
+   edd run scenarios.txt                                         # emit + tag, exit
+   python _local/enrich_traces_<sdk>.py --since-minutes 5       # SDK-specific enrichment
+   edd score --since 10                                          # trigger judges + poll + print table
    ```
-   The CLI tags every trace `sim-<branch>` — that tag is the join key for simulation.
+   Use the enrichment script matching your SDK (`enrich_traces.py` for Agno, `enrich_traces_claude.py` for Anthropic SDK, `enrich_traces_openai.py` for OpenAI Agents SDK). The CLI tags every trace `sim-<branch>` — that tag is the join key for simulation.
 
 4. **Read the table** — below 0.5 = real failure. Red cells print the judge's reason inline. See `references/scoring.md`.
 5. **Open the trace** for any failure. Cross-reference `references/failure-modes.md`.
@@ -193,7 +200,7 @@ Target one failing dimension, make a focused change, compare baseline vs. post-f
 3. Run inner loop focused on that dimension:
    ```bash
    edd run scenarios.txt
-   python _local/enrich_traces.py --since-minutes 5
+   python _local/enrich_traces_<sdk>.py --since-minutes 5
    edd score --since 10 --evaluators "<target-evaluator>"
    ```
 4. Build dataset and run experiment under a shared optimization name:
@@ -284,7 +291,7 @@ and version these files themselves (in their fork or working branch):
 | File | Purpose |
 |---|---|
 | `_local/create_evaluators.py` | Create LLM-as-judge rules in your Opik project. Define rubrics from your agent's promise inventory (see `references/agent-analysis.md`). Re-run whenever rubrics change. |
-| `_local/enrich_traces.py` | Normalize trace shape for your judges. Walk spans, extract tool names/outputs, patch `metadata.*`. Run between `edd run` and `edd score`. Shape varies by instrumentation library — write one that matches yours. |
+| `_local/enrich_traces_<sdk>.py` | Normalize trace shape for your judges. Walk spans, extract `user_message`, `assistant_response`, `tools_called`, `tool_outputs`, patch `metadata.*`. Run between `edd run` and `edd score`. Write one per SDK when multiple SDKs share an Opik project — each script must discriminate its own traces and skip the rest. See `references/trace-inspection.md`. |
 | `_local/<runtime>_extractor.py` | Custom `--extractor` for `edd-build` when your runtime emits trace paths that differ from the default (`trace.input.user_message` / `trace.output.assistant_response`). One function, importable from repo root. |
 | `scenarios.txt` (root) | Diff-specific scenarios for the current session. Regenerated per branch. |
 | `regressions.txt` (root) | Stable baseline scenarios covering the agent's core promises. Commit this in your fork — it persists across sessions. |
@@ -298,9 +305,7 @@ and version these files themselves (in their fork or working branch):
 **Guidance for `_local/` files:**
 
 - `create_evaluators.py`: One judge per promise from your agent's inventory. Use the scoring convention: 1 = explicitly verified correct, 0 = failed OR not applicable (not tested). Document the variable paths your judges use — they depend on your trace shape.
-- `enrich_traces.py`: Run after `edd run`, before `edd score`. Keep it thin — extract only what your judges need. Write it for your instrumentation library's span convention.
+- `enrich_traces_<sdk>.py`: Run after `edd run`, before `edd score`. Each script must (1) skip traces it doesn't own (SDK discriminator check on trace input keys or metadata), (2) write `user_message` + `assistant_response` + `tools_called` + `tool_outputs` to `metadata.*`. Evaluators read only from `metadata.*` — they never touch native SDK trace paths. See `references/trace-inspection.md` for extraction patterns per SDK.
 - `<runtime>_extractor.py`: One function returning a dict per trace, importable from repo root. Pass via `--extractor` to `edd-build`.
-
-To start fresh with a new agent: copy the `.example.txt` templates, run `references/agent-analysis.md` extraction, then derive `_local/create_evaluators.py` from the promise inventory.
 
 To start fresh with a new agent: copy the `.example.txt` templates, run `references/agent-analysis.md` extraction, then derive `_local/create_evaluators.py` from the promise inventory.

@@ -27,7 +27,9 @@ cd ..
 cp .env.example .env   # fill in OPIK_URL, OPIK_API_KEY, OPIK_OTLP_ENDPOINT
 ```
 
-Required env vars: `OPIK_URL`, `OPIK_API_KEY`, `OPIK_OTLP_ENDPOINT` (Opik instance), and `AGENT_ENDPOINT` (HTTP URL of the agent under test). See `PREREQUISITES.md` for the full integration contract.
+Required env vars: `OPIK_URL`, `OPIK_API_KEY`, `OPIK_OTLP_ENDPOINT` (Opik instance), and `AGENT_ENDPOINT` (HTTP URL of the agent under test).
+
+The default HTTP contract is `POST {AGENT_ENDPOINT}` with JSON body `{"message": "...", "session_id": "..."}` → JSON response with `content` field. For the substack-author-agent multi-SDK server, endpoints are `/agents/agno/runs`, `/agents/claude/runs`, `/agents/openai/runs`. See `PREREQUISITES.md` for the full integration contract.
 
 ## Commands
 
@@ -43,9 +45,9 @@ edd run "Hello agent" --wait                # single message — emit + score in
 edd run scenarios.txt --wait --evaluators "your-evaluator-a,your-evaluator-b"
 
 # With enrichment (runtime needs trace-shape normalization before scoring):
-edd run scenarios.txt                       # emit + tag only (no judges)
-python _local/enrich_traces.py --since-minutes 5
-edd score --since 10                        # trigger judges on last N minutes of traces
+edd run scenarios.txt                                  # emit + tag only (no judges)
+python _local/enrich_traces_<sdk>.py --since-minutes 5  # SDK-specific: agno / claude / openai
+edd score --since 10                                   # trigger judges on last N minutes of traces
 ```
 
 `scenarios.txt`: one scenario per line — plain string or JSON with optional `context`, `followups`, `evaluators` fields.

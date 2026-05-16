@@ -32,7 +32,7 @@ Three things to write down for each agent:
 
 What you'll typically see:
 
-### OpenInference (Agno, LangChain via openinference-instrumentation-*, OpenAI Assistants via OpenInference SDK)
+### OpenInference (Agno via `openinference-instrumentation-agno`)
 
 ```python
 trace.input  = {
@@ -40,15 +40,42 @@ trace.input  = {
     "agent.name": "...",
     "session.id": "...",
     "openinference.span.kind": "AGENT",
-    ...
 }
 trace.output = {
     "output.value": "<assistant response>",
-    "output.mime_type": "application/json",
 }
+# Tool spans: span.input["openinference.span.kind"] == "TOOL" (not span.type!)
+# Tool output: span.output["output.value"]
+# Discriminator: "input.value" in trace.input
 ```
 
-Tool spans (when present) have `openinference.span.kind = "TOOL"` in their input attributes. Note that Opik's top-level `trace.has_tool_spans` checks `span.type == "tool"` and **may report False** even when tool spans exist with `kind=TOOL` — because some instrumentors set `span.type = "general"`. Don't rely on the flag; walk spans yourself.
+Note: Opik's top-level `trace.has_tool_spans` checks `span.type == "tool"` and **may report False** even when tool spans exist with `kind=TOOL` — because Agno sets `span.type = "general"`. Walk spans yourself.
+
+### Anthropic SDK (`opik.integrations.anthropic.track_anthropic`)
+
+```python
+trace.input    = {"message": "<user message>", "session_id": "..."}
+trace.output   = {"output": "<assistant response>"}
+trace.metadata = {"providers": ["anthropic"]}
+# Tool spans: span.type == "tool"  ← reliable here
+# Tool name: span.name
+# Tool input: span.input["tool_input"] (subkey — span.input also has mcp_session)
+# Tool output: span.output["output"] (JSON string)
+# Discriminator: "message" in trace.input
+```
+
+### OpenAI Agents SDK (`opik.integrations.openai.agents.OpikTracingProcessor`)
+
+```python
+trace.input    = {"input": [{"role": "user", "content": "<user message>"}, ...]}
+trace.output   = {"output": [{"type": "reasoning", ...}, {"type": "message", "content": [{"type": "output_text", "text": "..."}], ...}]}
+trace.metadata = {"providers": ["openai"], "created_from": "openai-agents", "agents-trace-id": "..."}
+# Tool spans: span.type == "tool"  ← reliable
+# Tool name: span.name
+# Tool input: json.loads(span.input["input"])  ← JSON string, not a dict
+# Tool output: span.output.get("text") or span.output.get("output", "")
+# Discriminator: trace.metadata.get("created_from") == "openai-agents"
+```
 
 ### LangChain / LangGraph native
 
@@ -67,77 +94,97 @@ The Opik judge prompt's `variables` map points at trace JSON paths. Two patterns
 
 ### Pattern A — Judge variables point at the native shape
 
-Cheapest. No enrichment needed.
+Works only when all traces in the project come from the same SDK. Breaks the moment you run a second SDK against the same project.
 
 ```python
 variables = {
-    "input": "input.input.value",     # OpenInference
-    "output": "output.output.value",
+    "input": "input.input.value",     # OpenInference only
+    "output": "output.output.value",  # OpenInference only
 }
 ```
 
-Use when your trace shape is stable and you don't need anything that isn't directly on the trace.
+**Do not use if you mix SDKs in one Opik project.** Use Pattern B instead.
 
-### Pattern B — Enrich the trace metadata, point variables there
+### Pattern B — Normalize into metadata, point variables there (recommended)
 
-Use when judges need derived fields (tool-call summaries, tool outputs, intent labels, span counts, anything you compute from the trace+spans).
+The enrichment script extracts SDK-native paths and writes normalized fields to `trace.metadata`. Evaluators always read `metadata.*` — they never see raw SDK trace shapes.
 
-**Tool names only (lightweight proxy):**
+This is mandatory when:
+- You run multiple SDKs against one Opik project
+- Judges need tool call data (tool outputs aren't on the trace directly)
+- You want evaluators to survive a future runtime swap
 
-```python
-def enrich(client, project, trace_id):
-    spans = client.get_spans(project, trace_id, size=200).get("content", [])
-    tool_spans = [
-        s for s in spans
-        if (s.get("input") or {}).get("openinference.span.kind") == "TOOL"
-    ]
-    tool_names = [s.get("name", "?") for s in tool_spans]
-    client.update_trace_metadata(
-        trace_id, project,
-        {"tools_called": tool_names, "tool_count": len(tool_names)},
-    )
-```
-
-Good enough for judges that only need to know *whether* tools fired and *which* ones.
-
-**Tool names + outputs (accurate grounding verification):**
+**Skeleton (adapt per SDK):**
 
 ```python
 import json
 
-MAX_TOOLS = 10   # cap to avoid huge metadata; tune to your trace depth
-MAX_CHARS = 800  # per tool output
+MAX_TOOLS = 10
+MAX_CHARS = 800
 
-def enrich(client, project, trace_id):
+def enrich_one(client, project, trace):
+    trace_id = trace["id"]
+    trace_input = trace.get("input") or {}
+
+    # --- SDK-specific extraction (examples) ---
+    # Agno/OpenInference:
+    user_message = trace_input.get("input.value", "")
+    assistant_response = (trace.get("output") or {}).get("output.value", "")
+
+    # Anthropic SDK (track_anthropic):
+    # user_message = trace_input.get("message", "")
+    # assistant_response = (trace.get("output") or {}).get("output", "")
+
+    # OpenAI Agents SDK:
+    # user_message = (trace_input.get("input") or [{}])[0].get("content", "")
+    # assistant_response = extract_openai_response(trace.get("output") or {})
+
+    # --- Tool span extraction (varies by SDK) ---
     spans = client.get_spans(project, trace_id, size=200).get("content", [])
-    tool_spans = [
-        s for s in spans
-        if (s.get("input") or {}).get("openinference.span.kind") == "TOOL"
-    ]
+    tool_spans = [s for s in spans if s.get("type") == "tool"]
+    # For Agno: filter by s["input"].get("openinference.span.kind") == "TOOL"
+
     tool_names = [s.get("name", "?") for s in tool_spans]
     tool_outputs = []
     for s in tool_spans[:MAX_TOOLS]:
-        raw = (s.get("output") or {}).get("output.value", "")
+        raw = (s.get("output") or {}).get("output", "")  # adjust key per SDK
         output_str = json.dumps(raw, default=str) if not isinstance(raw, str) else raw
         tool_outputs.append({"name": s.get("name", "?"), "output": output_str[:MAX_CHARS]})
-    client.update_trace_metadata(
-        trace_id, project,
-        {"tools_called": tool_names, "tool_count": len(tool_names), "tool_outputs": tool_outputs},
-    )
+
+    # --- Write normalized fields ---
+    client.update_trace_metadata(trace_id, project, {
+        "user_message": user_message,
+        "assistant_response": assistant_response,
+        "tools_called": tool_names,
+        "tool_count": len(tool_names),
+        "tool_outputs": tool_outputs,
+    })
 ```
 
-Use this when grounding judges need to verify that specific facts in the response actually came from tool responses (not just that tools fired). **Truncation matters:** if a trace has more tool calls than `MAX_TOOLS`, some outputs won't be visible. Your grounding rubric should handle this: when `len(tools_called) > len(tool_outputs)`, give benefit of the doubt rather than scoring 0.
+**SDK discrimination:** In a shared project, each enrichment script must skip traces that belong to other SDKs. Check the trace input shape before processing:
 
-Run this between `edd run` and `edd score`. The framework leaves this hook empty on purpose — see the comment block in `setup/cli.py` after the tagging step.
+```python
+# Skip if not your SDK's trace
+if "input.value" not in trace.get("input", {}):   # Agno check
+    continue
+if "message" not in trace.get("input", {}):        # Claude SDK check
+    continue
+if (trace.get("metadata") or {}).get("created_from") != "openai-agents":  # OpenAI check
+    continue
+```
 
-Then judges read it:
+**Truncation:** if a trace has more tool calls than `MAX_TOOLS`, some outputs won't be visible. Grounding rubric should give benefit of the doubt when `len(tools_called) > len(tool_outputs)`.
+
+Run enrichment between `edd run` and `edd score`.
+
+Then judges read normalized metadata:
 
 ```python
 variables = {
-    "input": "input.input.value",
-    "output": "output.output.value",
+    "input": "metadata.user_message",
+    "output": "metadata.assistant_response",
     "tools_called": "metadata.tools_called",
-    "tool_outputs": "metadata.tool_outputs",   # only if you enriched outputs
+    "tool_outputs": "metadata.tool_outputs",
 }
 ```
 
