@@ -8,8 +8,6 @@ dependencies = [
     "rich>=13",
     "httpx>=0.27",
     "python-dotenv>=1.0",
-    "opentelemetry-sdk>=1.25",
-    "opentelemetry-exporter-otlp-proto-http>=1.25",
     # Pin to 2.x — endpoint shapes changed significantly from 1.x (PATCH traces/batch,
     # PUT experiments/items/bulk, feedback_scores embedded on trace, uuid7 required).
     # Bump only after verifying against references/opik-endpoint-cheatsheet.md.

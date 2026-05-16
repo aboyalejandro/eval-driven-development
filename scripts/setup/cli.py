@@ -97,15 +97,7 @@ async def _run(
     run_id = uuid.uuid4().hex[:8]
     start = datetime.now(timezone.utc)
 
-    # Union CLI flag with per-scenario evaluators. A scenario's `evaluators` field
-    # declares which judges should fire on its trace — keeps judge cost scoped to
-    # the dimension each intent actually exercises.
-    scenario_targets: set[str] = set()
-    for sc in scenarios:
-        scenario_targets.update(sc.get("evaluators") or [])
-    targets = (flag_targets | scenario_targets) or None
-
-    # 2. Run scenarios. Agent name is prefixed `sim-<run_id>-` for filtering.
+    # 2. Run scenarios.
     for i, sc in enumerate(scenarios):
         log.info("[%d/%d] %s", i + 1, len(scenarios), sc["message"][:80])
         await run_scenario(
@@ -155,7 +147,14 @@ async def _run(
         log.info("run complete — traces tagged. Run enrichment then `edd score --since N`.")
         return
 
-    # 6 + 7. --wait: pick judges, trigger, poll, print.
+    # 6 + 7. --wait: resolve target judges, trigger, poll, print.
+    # Union CLI flag with per-scenario evaluators — keeps judge cost scoped to
+    # the dimensions each intent actually exercises.
+    scenario_targets: set[str] = set()
+    for sc in scenarios:
+        scenario_targets.update(sc.get("evaluators") or [])
+    targets = (flag_targets | scenario_targets) or None
+
     evals = client.get_evaluators().get("content", [])
     project_evals = [ev for ev in evals if ev.get("project_name") == project]
 
