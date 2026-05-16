@@ -62,7 +62,7 @@ async def create_agent(
             if AGENT_AUTH:
                 headers["Authorization"] = AGENT_AUTH
 
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(timeout=300.0) as client:
                 resp = await client.post(
                     AGENT_ENDPOINT,
                     headers=headers,
