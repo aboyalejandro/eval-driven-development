@@ -106,7 +106,7 @@ class OpikClient:
         """Patch a trace's metadata. Existing keys not in `metadata` are preserved.
 
         Use this for any trace-shape normalization your judges need
-        (e.g. flattening OpenInference span attributes into trace-level fields).
+        (e.g. extracting tool call summaries or flattening span attributes).
         See `references/trace-inspection.md` for the design pattern.
         """
         self._request(

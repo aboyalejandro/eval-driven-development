@@ -138,10 +138,10 @@ async def _run(
     client.batch_update_traces(trace_ids, project, tags_to_add=tags)
     log.info("tagged: %s", ", ".join(tags))
 
-    # If your judges need trace-shape normalization (e.g. tool-call summaries
-    # for OpenInference-instrumented agents), run your enrichment script here,
-    # then use `edd score --since N` to trigger + poll as a separate step.
-    # See references/trace-inspection.md for the enrichment pattern.
+    # If your judges need trace-shape normalization (tool-call summaries,
+    # flattened input/output paths, custom metadata), run your enrichment
+    # script here, then `edd score --since N` to trigger + poll.
+    # See references/trace-inspection.md for the pattern and _local/ for examples.
 
     if not wait:
         log.info("run complete — traces tagged. Run enrichment then `edd score --since N`.")

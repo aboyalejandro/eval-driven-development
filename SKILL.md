@@ -85,7 +85,7 @@ Use when you want fast signal on what the agent actually did — trace inputs, o
    edd run scenarios.txt --wait --evaluators "<names>"
    ```
 
-   *With enrichment (e.g. OpenInference — add tool-call metadata before judges fire):*
+   *With enrichment (your runtime needs trace normalization before judges fire):*
    ```bash
    edd run scenarios.txt                            # emit + tag, exit
    python _local/enrich_traces.py --since-minutes 5 # your enrichment step
@@ -291,15 +291,23 @@ and version these files themselves (in their fork or working branch):
 | File | Purpose |
 |---|---|
 | `_local/create_evaluators.py` | Create LLM-as-judge rules in your Opik project. Define rubrics from your agent's promise inventory (see `references/agent-analysis.md`). Re-run whenever rubrics change. |
-| `_local/enrich_traces.py` | Normalize trace shape for your judges. Walk spans, extract tool names/outputs, patch `metadata.*`. Run between `edd run` and `edd score`. Convention-specific: OpenInference, LangChain, raw OTEL each differ. |
-| `_local/openinference_extractor.py` | Custom `--extractor` for `edd-build` if your runtime uses OpenInference trace paths (`input["input.value"]` instead of `input.user_message`). |
+| `_local/enrich_traces.py` | Normalize trace shape for your judges. Walk spans, extract tool names/outputs, patch `metadata.*`. Run between `edd run` and `edd score`. Shape varies by instrumentation library — write one that matches yours. |
+| `_local/<runtime>_extractor.py` | Custom `--extractor` for `edd-build` when your runtime emits trace paths that differ from the default (`trace.input.user_message` / `trace.output.assistant_response`). One function, importable from repo root. |
 | `scenarios.txt` (root) | Diff-specific scenarios for the current session. Regenerated per branch. |
 | `regressions.txt` (root) | Stable baseline scenarios covering the agent's core promises. Commit this in your fork — it persists across sessions. |
+
+**Two places for runtime-specific code — different purposes:**
+
+`scripts/setup/agent.py` is a **template you edit directly and commit in your fork**. Runtime-specific fields (session tokens, streaming flags, auth schemes, structured context) go in `arun()`. This defines how your agent receives requests and is part of your fork's versioned code.
+
+`_local/` is **gitignored scratchpad** for per-agent configuration that shouldn't be in the framework repo at all — rubrics, enrichment scripts, extractors. Never commit `_local/` to the framework remote; it encodes your agent's specifics and would break other users' setups.
 
 **Guidance for `_local/` files:**
 
 - `create_evaluators.py`: One judge per promise from your agent's inventory. Use the scoring convention: 1 = explicitly verified correct, 0 = failed OR not applicable (not tested). Document the variable paths your judges use — they depend on your trace shape.
-- `enrich_traces.py`: Run after `edd run`, before `edd score`. Keep it thin — extract only what your judges need. If your judges need tool outputs for grounding verification, extract them here.
-- **Never commit `_local/` contents to the framework repo.** They encode your agent's specifics. Other users need different rubrics, enrichment, and extractors.
+- `enrich_traces.py`: Run after `edd run`, before `edd score`. Keep it thin — extract only what your judges need. Write it for your instrumentation library's span convention.
+- `<runtime>_extractor.py`: One function returning a dict per trace, importable from repo root. Pass via `--extractor` to `edd-build`.
+
+To start fresh with a new agent: copy the `.example.txt` templates, run `references/agent-analysis.md` extraction, then derive `_local/create_evaluators.py` from the promise inventory.
 
 To start fresh with a new agent: copy the `.example.txt` templates, run `references/agent-analysis.md` extraction, then derive `_local/create_evaluators.py` from the promise inventory.

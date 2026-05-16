@@ -42,7 +42,7 @@ edd check                                   # verify Opik connection
 edd run "Hello agent" --wait                # single message — emit + score in one shot
 edd run scenarios.txt --wait --evaluators "your-evaluator-a,your-evaluator-b"
 
-# With enrichment (OpenInference or custom trace normalization):
+# With enrichment (runtime needs trace-shape normalization before scoring):
 edd run scenarios.txt                       # emit + tag only (no judges)
 python _local/enrich_traces.py --since-minutes 5
 edd score --since 10                        # trigger judges on last N minutes of traces
