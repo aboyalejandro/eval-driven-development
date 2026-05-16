@@ -22,24 +22,18 @@ invokes the endpoint and relays the text response.
 """
 
 import importlib
-import os
 import sys
 import uuid
 from types import SimpleNamespace
 
 import httpx
-from dotenv import load_dotenv
 
-load_dotenv()
-
-AGENT_ENDPOINT = os.getenv("AGENT_ENDPOINT")
-AGENT_AUTH = os.getenv("AGENT_AUTH")
-AGENT_NAME = os.getenv("AGENT_NAME", "agent")
+from shared.settings import settings
 
 
 def _load_adapter():
     """Load create_agent from AGENT_ADAPTER if set, else return None."""
-    adapter_path = os.getenv("AGENT_ADAPTER")
+    adapter_path = settings.agent_adapter
     if not adapter_path:
         return None
     mod_path, fn_name = adapter_path.rsplit(":", 1)
@@ -59,30 +53,31 @@ async def _default_create_agent(
     run_id: str,
     context: dict | None = None,
 ):
-    if not AGENT_ENDPOINT:
+    """Return an AgentProxy using the generic JSON contract."""
+    if not settings.agent_endpoint:
         raise RuntimeError(
             "AGENT_ENDPOINT is not set. Configure it in .env (see .env.example)."
         )
 
     class AgentProxy:
-        def __init__(self):
-            self.name = f"sim-{run_id}-{AGENT_NAME}"
+        def __init__(self) -> None:
+            self.name = f"sim-{run_id}-{settings.agent_name}"
             self._session_id = session_id
             self._context = context or {}
 
-        async def arun(self, message: str):
+        async def arun(self, message: str) -> SimpleNamespace:
             full_message = message
             if self._context:
                 qualifier = ", ".join(f"{k}: {v}" for k, v in self._context.items())
                 full_message = f"{message} ({qualifier})"
 
             headers = {"Content-Type": "application/json"}
-            if AGENT_AUTH:
-                headers["Authorization"] = AGENT_AUTH
+            if settings.agent_auth:
+                headers["Authorization"] = settings.agent_auth
 
             async with httpx.AsyncClient(timeout=300.0) as client:
                 resp = await client.post(
-                    AGENT_ENDPOINT,
+                    settings.agent_endpoint,
                     headers=headers,
                     json={"message": full_message, "session_id": self._session_id},
                 )

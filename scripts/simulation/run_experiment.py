@@ -21,17 +21,16 @@ Optional: wrap multiple experiments under an Optimization (same
 """
 
 import json
-import os
 import time
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 import typer
-from dotenv import load_dotenv
 from rich.console import Console
 
 from shared.opik_client import OpikClient
+from shared.settings import settings
 from setup.results import _latest_per_judge
 
 console = Console()
@@ -39,6 +38,7 @@ app = typer.Typer(add_completion=False)
 
 
 def _find_evaluators(client: OpikClient, project: str, names: list[str]) -> list[dict]:
+    """Return evaluator dicts for the given schema names, warning on any not found."""
     evals = client.get_evaluators().get("content", [])
     candidates = [ev for ev in evals if ev.get("project_name") == project]
     found = []
@@ -89,6 +89,7 @@ def _resolve_optimization(
     dataset_name: str,
     objective: str,
 ) -> str:
+    """Find or create an optimization group, returning its id."""
     existing = client.find_optimization(name, dataset_id)
     if existing:
         return existing["id"]
@@ -104,6 +105,7 @@ def _resolve_optimization(
 
 
 def _auto_experiment_name(dataset_name: str) -> str:
+    """Generate a unique experiment name from dataset name + timestamp + short hash."""
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     sha = uuid.uuid4().hex[:7]
     return f"{dataset_name}-{sha}-{ts}"
@@ -135,7 +137,6 @@ def main(
     ),
     dry_run: bool = typer.Option(False, "--dry-run"),
 ):
-    load_dotenv()
     client = OpikClient()
 
     dataset_id = client.get_dataset_id(dataset_name)
@@ -254,12 +255,13 @@ def main(
         )
         console.print(f"optimization {opt_id} marked completed")
 
-    base = os.environ.get("OPIK_URL", "").rstrip("/")
+    base = settings.opik_url.rstrip("/")
     if base:
         console.print(f"  {base}/experiments/{exp_id}")
         if opt_id:
             console.print(f"  {base}/optimizations/{opt_id}")
 
+    # Machine-readable output — pipe with jq to extract experiment_id / optimization_id.
     print(json.dumps({"experiment_id": exp_id, "optimization_id": opt_id}))
 
 

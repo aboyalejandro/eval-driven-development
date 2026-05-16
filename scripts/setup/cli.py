@@ -18,19 +18,19 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import typer
-from dotenv import load_dotenv
 from rich.console import Console
 
 from setup.agent import run_scenario
-from shared.opik_client import OpikClient
 from setup.results import poll_scores, print_results
+from shared.opik_client import OpikClient
+from shared.settings import settings
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 log = logging.getLogger(__name__)
 
 app = typer.Typer()
 console = Console()
-DEFAULT_PROJECT = os.environ.get("EVAL_PROJECT", "Testing")
+DEFAULT_PROJECT = settings.eval_project
 
 
 def _load_scenarios(arg: str) -> list[dict]:
@@ -78,7 +78,6 @@ def run(
     ),
 ):
     """Run a message or a scenarios file."""
-    load_dotenv()
     scenarios = _load_scenarios(message_or_file)
     flag_targets = {n.strip() for n in evaluators.split(",")} if evaluators else set()
     asyncio.run(_run(scenarios, project, wait, timeout, flag_targets))
@@ -90,7 +89,8 @@ async def _run(
     wait: bool,
     timeout: int,
     flag_targets: set[str],
-):
+) -> None:
+    """Emit scenarios, tag traces, optionally trigger judges and poll scores."""
     # The agent under test owns its own OTEL → Opik tracing (see PREREQUISITES.md).
     # This process is just an HTTP client; we don't instrument it.
 
@@ -203,7 +203,6 @@ def score(
     Run after `cli.py run` (and any custom enrichment) to score the traces
     that just landed without re-running the scenarios.
     """
-    load_dotenv()
     flag_targets = {n.strip() for n in evaluators.split(",")} if evaluators else set()
     client = OpikClient()
     from_str = (
@@ -246,7 +245,6 @@ def score(
 @app.command()
 def check():
     """Verify env vars + Opik reachable + agent reachable. Run before first invocation."""
-    load_dotenv()
     required = ["OPIK_URL", "OPIK_API_KEY", "OPIK_OTLP_ENDPOINT", "AGENT_ENDPOINT"]
     errors = []
     for v in required:
@@ -259,19 +257,21 @@ def check():
         try:
             OpikClient()._request("GET", "/v1/private/projects", params={"size": 1})
             console.print("  [green]✓[/] Opik reachable")
-        except Exception as e:
-            console.print(f"  [red]✗[/] Opik: {e}")
+        except Exception:
+            log.exception("Opik connectivity check failed")
+            console.print("  [red]✗[/] Opik unreachable — see log for details")
             errors.append("OPIK")
 
         try:
             import httpx as _httpx
-            url = os.environ["AGENT_ENDPOINT"]
+            url = settings.agent_endpoint
             # Use the base host — HEAD on the run endpoint may not be supported.
             base = url.split("/agents/")[0] if "/agents/" in url else url
             _httpx.get(base, timeout=5.0)
             console.print("  [green]✓[/] Agent endpoint reachable")
-        except Exception as e:
-            console.print(f"  [red]✗[/] AGENT_ENDPOINT unreachable: {e}")
+        except Exception:
+            log.exception("Agent endpoint check failed")
+            console.print("  [red]✗[/] AGENT_ENDPOINT unreachable — see log for details")
             errors.append("AGENT_ENDPOINT")
 
     if errors:

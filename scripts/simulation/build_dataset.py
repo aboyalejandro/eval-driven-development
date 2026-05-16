@@ -22,7 +22,6 @@ dict and returns the item dict (or `None` to skip).
 
 import importlib
 import json
-import os
 import sys
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -30,10 +29,10 @@ from pathlib import Path
 from typing import Any, Callable
 
 import typer
-from dotenv import load_dotenv
 from rich.console import Console
 
 from shared.opik_client import OpikClient
+from shared.settings import settings
 
 console = Console()
 app = typer.Typer(add_completion=False)
@@ -86,6 +85,7 @@ def _load_extractor(spec: str | None) -> Callable[[dict], dict | None]:
 
 
 def _parse_from(value: str | None, default_hours: int = 6) -> str:
+    """Return an ISO-8601 lower-bound timestamp, defaulting to N hours ago."""
     if not value:
         return (datetime.now(timezone.utc) - timedelta(hours=default_hours)).strftime(
             "%Y-%m-%dT%H:%M:%S.000Z"
@@ -126,7 +126,7 @@ def main(
     ),
     dry_run: bool = typer.Option(False, "--dry-run"),
 ):
-    load_dotenv()
+    """Build an Opik dataset from sim traces tagged by edd run."""
     extractor_fn = _load_extractor(extractor)
     from_iso = _parse_from(from_time)
 
@@ -177,7 +177,7 @@ def main(
     )
     client.insert_dataset_items(dataset_name, items)
     dataset_id = client.get_dataset_id(dataset_name)
-    base = os.environ.get("OPIK_URL", "").rstrip("/")
+    base = settings.opik_url.rstrip("/")
     console.print(
         f"[green]wrote {len(items)} items[/green] → dataset={dataset_name} (id={dataset_id})"
     )

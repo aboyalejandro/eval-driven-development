@@ -8,23 +8,28 @@ Surface kept narrow on purpose — only the endpoints the EDD scripts use:
 - optimizations: find, upsert (group experiments under one timeline)
 """
 
-import os
+import logging
 import uuid
 
 import httpx
 
+from shared.settings import settings
+
+log = logging.getLogger(__name__)
+
 
 class OpikClient:
     def __init__(self, base_url: str | None = None, api_key: str | None = None):
-        self.base = (base_url or os.environ["OPIK_URL"]).rstrip("/")
-        self.headers = {"Authorization": api_key or os.environ.get("OPIK_API_KEY", "")}
+        self.base = (base_url or settings.opik_url).rstrip("/")
+        self.headers = {"Authorization": api_key or settings.opik_api_key}
         # Comet-hosted Opik requires workspace scoping for REST calls; self-hosted ignores it.
-        workspace = os.environ.get("OPIK_WORKSPACE")
-        if workspace:
-            self.headers["Comet-Workspace"] = workspace
+        if settings.opik_workspace:
+            self.headers["Comet-Workspace"] = settings.opik_workspace
 
     def _request(self, method: str, path: str, **kwargs) -> dict:
+        """Execute an HTTP request and return the parsed JSON body."""
         kwargs.setdefault("timeout", 30.0)
+        log.debug("%s %s", method, path)
         r = httpx.request(method, f"{self.base}{path}", headers=self.headers, **kwargs)
         if r.status_code >= 400:
             # Surface response body — Opik returns useful validation details here.
@@ -38,6 +43,7 @@ class OpikClient:
     # --- projects ---
 
     def get_project_id(self, name: str) -> str:
+        """Return the UUID of a project by name, raising ValueError if not found."""
         data = self._request("GET", "/v1/private/projects", params={"name": name})
         for p in data.get("content", []):
             if p["name"] == name:
@@ -73,6 +79,7 @@ class OpikClient:
     def batch_update_traces(
         self, trace_ids: list[str], project: str, tags_to_add: list[str]
     ) -> None:
+        """Append tags to a batch of traces without overwriting existing ones."""
         # Opik 2.x: PATCH with `{ids, update, merge_tags}` shape. `tags_to_add`
         # lives inside the `update` body. Old POST {trace_ids, tags_to_add}
         # returns 422 "traces must not be null".
@@ -87,6 +94,7 @@ class OpikClient:
         )
 
     def get_trace_scores(self, trace_id: str) -> list[dict]:
+        """Return feedback scores embedded on a trace (Opik 2.x stores them on the trace object)."""
         # `/traces/{id}/feedback-scores` was removed in Opik 2.x — scores are now
         # embedded on the trace itself under `feedback_scores`.
         trace = self._request("GET", f"/v1/private/traces/{trace_id}")
@@ -118,6 +126,7 @@ class OpikClient:
     # --- evaluators (automation rules) ---
 
     def get_evaluators(self) -> dict:
+        """List all automation rule evaluators in the workspace."""
         return self._request(
             "GET", "/v1/private/automations/evaluators", params={"size": 500}
         )
@@ -125,6 +134,7 @@ class OpikClient:
     def trigger_evaluation(
         self, project_id: str, trace_ids: list[str], rule_ids: list[str]
     ) -> dict:
+        """Fire specific evaluator rules against a set of traces immediately."""
         # Endpoint moved in Opik 2.x — was /automations/evaluators/run.
         return self._request(
             "POST",
@@ -140,6 +150,7 @@ class OpikClient:
     # --- datasets ---
 
     def get_dataset_id(self, name: str) -> str | None:
+        """Return the UUID of a dataset by name, or None if it does not exist."""
         data = self._request(
             "GET", "/v1/private/datasets", params={"name": name, "size": 50}
         )
@@ -277,9 +288,11 @@ class OpikClient:
         )
 
     def get_experiment(self, experiment_id: str) -> dict:
+        """Fetch a single experiment by its UUID."""
         return self._request("GET", f"/v1/private/experiments/{experiment_id}")
 
     def find_experiment_by_name(self, name: str) -> dict | None:
+        """Return the first experiment matching the given name, or None."""
         data = self._request(
             "GET", "/v1/private/experiments", params={"name": name, "size": 50}
         )
@@ -291,6 +304,7 @@ class OpikClient:
     # --- optimizations ---
 
     def find_optimization(self, name: str, dataset_id: str) -> dict | None:
+        """Return an optimization matching name + dataset_id, or None."""
         data = self._request(
             "GET",
             "/v1/private/optimizations",

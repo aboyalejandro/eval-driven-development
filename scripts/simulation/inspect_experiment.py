@@ -9,16 +9,15 @@ digest table, and lists items where any judge scored below `--score-threshold`.
 """
 
 import json
-import os
 from pathlib import Path
 from statistics import mean
 
 import typer
-from dotenv import load_dotenv
 from rich.console import Console
 from rich.table import Table
 
 from shared.opik_client import OpikClient
+from shared.settings import settings
 
 console = Console()
 app = typer.Typer(add_completion=False)
@@ -27,6 +26,7 @@ app = typer.Typer(add_completion=False)
 def _resolve_experiment(
     client: OpikClient, exp_id: str | None, exp_name: str | None
 ) -> dict:
+    """Fetch an experiment by id or name, raising BadParameter if neither resolves."""
     if exp_id:
         return client.get_experiment(exp_id)
     if exp_name:
@@ -43,6 +43,7 @@ def _exp_scores(item: dict) -> list[dict]:
 
 
 def _exp_trace_id(item: dict) -> str | None:
+    """Extract the source trace id from a joined experiment item."""
     exp_items = item.get("experiment_items") or []
     if exp_items:
         return exp_items[0].get("trace_id")
@@ -51,6 +52,7 @@ def _exp_trace_id(item: dict) -> str | None:
 
 
 def _aggregate(items: list[dict], evaluator: str | None) -> dict[str, dict]:
+    """Compute per-evaluator n/avg/min/max across all joined experiment items."""
     by_eval: dict[str, list[float]] = {}
     for it in items:
         scores = _exp_scores(it)
@@ -71,6 +73,7 @@ def _aggregate(items: list[dict], evaluator: str | None) -> dict[str, dict]:
 
 
 def _print_digest(agg: dict[str, dict]) -> None:
+    """Render per-evaluator aggregate stats as a Rich table."""
     table = Table(title="Per-evaluator digest")
     table.add_column("Evaluator")
     table.add_column("N", justify="right")
@@ -91,6 +94,7 @@ def _print_digest(agg: dict[str, dict]) -> None:
 def _print_failures(
     items: list[dict], threshold: float, evaluator: str | None, limit: int
 ) -> None:
+    """Print items where any judge scored below threshold, with trace links."""
     fails = []
     for it in items:
         scores = _exp_scores(it)
@@ -105,7 +109,7 @@ def _print_failures(
         f"[bold]{len(fails)}[/bold] failures below {threshold} "
         f"(showing first {min(limit, len(fails))})"
     )
-    base = os.environ.get("OPIK_URL", "").rstrip("/")
+    base = settings.opik_url.rstrip("/")
     for it, name, val, reason in fails[:limit]:
         data = it.get("data") or it
         msg = (data.get("user_message") or "")[:120].replace("\n", " ")
@@ -130,7 +134,6 @@ def main(
         None, "--out-jsonl", help="Dump joined items to JSONL."
     ),
 ):
-    load_dotenv()
     client = OpikClient()
     exp = _resolve_experiment(client, experiment_id, experiment_name)
     exp_id = exp["id"]
