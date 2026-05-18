@@ -13,9 +13,7 @@ Discovery step 2 of the eval pipeline. Reads the promise inventory, decides whic
 - Opik creds in `.env`: `OPIK_URL`, `OPIK_API_KEY`
 - Opik project named in `.edd/session.json` (or ask the user — must be a dedicated **testing** project, not production)
 
-## Steps
-
-### 1. Derive dimensions from promises
+## Step 1 — Derive dimensions from promises
 
 For each line in `.edd/promises.md`, map to one evaluator dimension. Follow [references/evaluator-selection.md](../../references/evaluator-selection.md). Categories:
 
@@ -32,7 +30,7 @@ Write derived dimensions to `.edd/evaluator-plan.md`:
   Scoring: 1 = explicitly verified, 0 = failed OR not applicable
 ```
 
-### 2. List existing Opik evaluators
+## Step 2 — List existing Opik evaluators
 
 ```python
 import sys; sys.path.insert(0, 'scripts')
@@ -46,7 +44,7 @@ for ev in evs:
 
 Mark each dimension in `.edd/evaluator-plan.md` as **REUSE** (match exists) or **CREATE** (gap).
 
-### 3. Generate `_local/create_evaluators.py`
+## Step 3 — Generate `_local/create_evaluators.py`
 
 One block per **CREATE** dimension. Template:
 
@@ -78,7 +76,7 @@ Rules baked into the template:
 - **Read from `metadata.*`.** Enrichment populates these (see `_local/enrich_traces_<sdk>.py`); never wire the judge to native SDK trace paths.
 - **Binary scoring.** 1 = explicitly verified correct, 0 = failed OR not applicable. No half-credit, no NA.
 
-### 4. Run it
+## Step 4 — Run it
 
 ```bash
 python _local/create_evaluators.py
@@ -86,7 +84,7 @@ python _local/create_evaluators.py
 
 Re-listing via `c.get_evaluators()` should now show every dimension from the plan.
 
-### 5. Document variable paths
+## Step 5 — Document variable paths
 
 Append to `.edd/evaluator-plan.md` which trace paths each judge expects. This is what `_local/enrich_traces_<sdk>.py` must populate — `edd:run` reads this file to know whether enrichment is needed.
 

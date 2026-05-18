@@ -45,6 +45,6 @@ If either is stale, run `edd:scope-agent` and/or `edd:scope-evals` before `edd:r
 
 Never ask the user for evaluator names, dataset names, experiment names, or optimization names. Derive them per [naming conventions](../CLAUDE.md#naming-conventions); pull dimensions from `edd:scope-agent` + `edd:scope-evals` outputs.
 
-## See also
+## Next
 
 - [Sub-skill index + Pipeline DAG](../CLAUDE.md) — sitemap with pipeline overview, anti-patterns, stop-rules, session schema.
