@@ -21,33 +21,28 @@ app = typer.Typer(add_completion=False)
 
 
 def _default_extractor(trace: dict) -> dict | None:
-    """Pull user_message + assistant_response from canonical span fields.
+    """Read the enrichment-normalized convention from `trace.metadata`.
 
-    Trace shape Opik exposes:
-      input  = {"user_message": "...", ...} OR a plain string
-      output = {"assistant_response": "...", ...} OR a plain string
-
-    Caller can swap this for a runtime-specific function via --extractor.
+    `_local/enrich_traces_<sdk>.py` patches `metadata.user_message` and
+    `metadata.assistant_response` via `OpikClient.update_trace_metadata`.
+    The default extractor reads from the same place — same source of truth
+    as the judges (which read `metadata.*` variables). If neither
+    enrichment nor a custom `--extractor` is wired, `--dry-run` reports
+    zero items. See `references/trace-enrichment.md`.
     """
-    inp = trace.get("input") or {}
-    out = trace.get("output") or {}
-    if isinstance(inp, dict):
-        user_message = inp.get("user_message") or inp.get("message") or ""
-    else:
-        user_message = str(inp)
-    if isinstance(out, dict):
-        assistant_response = out.get("assistant_response") or out.get("response") or ""
-    else:
-        assistant_response = str(out)
+    meta = trace.get("metadata") or {}
+    if not isinstance(meta, dict):
+        return None
+    user_message = meta.get("user_message", "")
+    assistant_response = meta.get("assistant_response", "")
     if not user_message or not assistant_response:
         return None
     item: dict[str, Any] = {
         "user_message": user_message,
         "assistant_response": assistant_response,
     }
-    metadata = trace.get("metadata") or {}
-    if isinstance(metadata, dict) and metadata:
-        item["trace_metadata"] = metadata
+    if meta:
+        item["trace_metadata"] = meta
     return item
 
 
