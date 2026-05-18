@@ -13,6 +13,7 @@ import typer
 from rich.console import Console
 
 from shared.opik_client import OpikClient
+from shared.session import branch_tag_warning, session_tags
 from shared.settings import settings
 
 console = Console()
@@ -102,12 +103,26 @@ def main(
         "--extractor",
         help="Dotted path `module:function` returning an item dict (or None) per trace.",
     ),
-    description: str | None = typer.Option(
-        None, "--description", help="Set on dataset creation only."
+    description: str = typer.Option(
+        ...,
+        "--description",
+        help="Required. Short summary of what this dataset captures (e.g. the topic + hypothesis).",
+    ),
+    extra_tag: list[str] = typer.Option(
+        [],
+        "--tag",
+        help="Extra tag to attach to the dataset. Repeatable. Stacks on top of branch-tag + session tags.",
+    ),
+    allow_main: bool = typer.Option(
+        False,
+        "--allow-main",
+        help="Silence the warning when --branch-tag references main/master.",
     ),
     dry_run: bool = typer.Option(False, "--dry-run"),
 ):
     """Build an Opik dataset from sim traces tagged by edd run."""
+    if not allow_main and (w := branch_tag_warning(branch_tag)):
+        console.print(f"[yellow]{w}[/yellow]")
     extractor_fn = _load_extractor(extractor)
     from_iso = _parse_from(from_time)
 
@@ -150,11 +165,12 @@ def main(
         console.print(json.dumps(sample, indent=2, default=str))
         return
 
+    dataset_tags = [branch_tag, *session_tags(), *extra_tag]
     client.create_dataset(
         dataset_name,
         description=description,
         project_name=project,
-        tags=[branch_tag],
+        tags=dataset_tags,
     )
     client.insert_dataset_items(dataset_name, items)
     dataset_id = client.get_dataset_id(dataset_name)

@@ -1,4 +1,5 @@
 ---
+name: scope-evals
 description: Configure manual-trigger judges in Opik — derive one evaluator dimension per promise, list what already exists, generate `_local/create_evaluators.py` for the gaps, run it. Output is `.edd/evaluator-plan.md` + judges live in Opik with `enabled=False, sampling_rate=0`. Invoke as `edd:scope-evals` or when the user says "set up judges", "create evaluators", "scope the evals". For *firing* judges and reading scores, see `edd:run`.
 ---
 

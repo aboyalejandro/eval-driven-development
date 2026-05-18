@@ -1,5 +1,6 @@
 ---
-description: Fire scenarios at the agent and read the score table. Mode 1: read traces inline, no judges. Mode 2 Phase 1: trigger manual-fire judges that `edd:scope-evals` already created, print the per-dimension table. Generates `scenarios.txt` at session aggression level; branches on whether trace enrichment runs between emit and score. Invoke as `edd:run` or when the user says "run scenarios", "score traces", "fire judges", "edd inner loop". For *creating* judges, see `edd:scope-evals`.
+name: run
+description: Fire scenarios at the agent and read the score table. Mode 1 reads traces inline with no judges; Mode 2 Phase 1 triggers manual-fire judges that `edd:scope-evals` already created and prints the per-dimension table. Generates `scenarios.txt` at session aggression level; branches on whether trace enrichment runs between emit and score. Invoke as `edd:run` or when the user says "run scenarios", "score traces", "fire judges", "edd inner loop". For *creating* judges, see `edd:scope-evals`.
 ---
 
 # edd:run — scenarios → traces → scores
@@ -14,6 +15,7 @@ Inner loop of the eval pipeline. Covers Mode 1 (quick analysis) and Mode 2 Phase
 - For Mode 2: judges in Opik ([`edd:scope-evals`](../scope-evals/SKILL.md)); enrichment script in `_local/` if your trace shape needs it
 - venv active: `source scripts/.venv/bin/activate`
 - `edd check` passes
+- **On a feature branch, not `main` / `master`.** `edd run` refuses to emit traces from the default branch — prevents `sim-main` taint. If you intentionally want main, pass `--allow-main`.
 
 ## Step 1 — Generate scenarios
 

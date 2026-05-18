@@ -19,6 +19,12 @@ Default extractor reads `metadata.user_message` + `metadata.assistant_response`.
 
 **Always `--dry-run` first.** Prints planned items without writing — verify count and shape before committing to a real write.
 
+**Required: `--description "..."`.** Short summary of what the dataset captures (topic + hypothesis). Surfaces on the Opik dataset card and makes datasets searchable later.
+
+**Tags applied to the dataset:** `[branch_tag, *session_tags(), *extra_tag]` where `session_tags()` reads `.edd/session.json` for `topic`/`mode`/`aggression`, and `--tag <value>` is repeatable.
+
+**Branch-tag warning.** Prints a yellow warning when `--branch-tag` references `main` / `master`. Silence with `--allow-main`.
+
 ## `edd-run`
 
 Three things in one command:
@@ -26,7 +32,13 @@ Three things in one command:
 2. Polls Opik until scores land (`--score-timeout`, default 300s).
 3. Creates the experiment with metadata (model, branch, evaluator) and copies scores onto experiment items.
 
-`--optimization-name <name>` wraps the experiment under an Opik Optimization so multiple runs appear on one timeline. Pair this with `--experiment-name` to label each variant. `--finalize-optimization` closes the optimization once you're done iterating. See [`../../references/experiment-grouping.md`](../../references/experiment-grouping.md).
+**Required: `--description "..."`.** Surfaces on the Opik experiment card; the hypothesis lives here.
+
+**Optimization grouping.** `--optimization-name <name>` wraps the experiment under an Opik Optimization so multiple runs appear on one timeline. Pair with `--experiment-name` to label each variant. First call also accepts `--optimization-description` — reused when the same optimization is upserted later. `--finalize-optimization` closes it once you're done iterating. See [`../../references/experiment-grouping.md`](../../references/experiment-grouping.md).
+
+**Tags applied to experiment + optimization:** same shape as `edd-build` — `[branch_tag, *session_tags(), *extra_tag]`.
+
+**Branch-tag warning.** Same `--allow-main` escape hatch as `edd-build`.
 
 ## `edd-inspect`
 
