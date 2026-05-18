@@ -75,7 +75,7 @@ If the agent doesn't already trace to Opik, wire it up before running this loop.
 
 ## Caveat: REST API coupling
 
-This framework is tightly coupled to Opik's REST API surface. The endpoints in use are documented in `references/opik-endpoint-cheatsheet.md` and the wrapper lives at `scripts/opik_client.py`.
+This framework is tightly coupled to Opik's REST API surface. The endpoints in use are documented in `references/opik-endpoints.md` and the wrapper lives at `scripts/opik_client.py`.
 
 If you hit unexpected errors on what was previously a working setup:
 

@@ -37,7 +37,7 @@ Required env vars:
 
 ## Caveat
 
-The framework is **tightly coupled** to Opik's REST API. See [`../../references/opik-endpoint-cheatsheet.md`](../../references/opik-endpoint-cheatsheet.md) for the catalogue of endpoints used. If Opik bumps a version and shapes change, this is the file that needs patching.
+The framework is **tightly coupled** to Opik's REST API. See [`../../references/opik-endpoints.md`](../../references/opik-endpoints.md) for the catalogue of endpoints used. If Opik bumps a version and shapes change, this is the file that needs patching.
 
 ## Up one level
 

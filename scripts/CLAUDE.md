@@ -38,7 +38,7 @@ All `edd*` commands assume the venv is active and run from **repo root**.
 
 ## Caveat — Opik REST coupling
 
-The framework is tightly coupled to Opik's REST API. Endpoints are catalogued in [`../references/opik-endpoint-cheatsheet.md`](../references/opik-endpoint-cheatsheet.md). If a previously-working setup starts erroring after time has passed, suspect API drift first — check Opik release notes before debugging the framework.
+The framework is tightly coupled to Opik's REST API. Endpoints are catalogued in [`../references/opik-endpoints.md`](../references/opik-endpoints.md). If a previously-working setup starts erroring after time has passed, suspect API drift first — check Opik release notes before debugging the framework.
 
 ## Up one level
 

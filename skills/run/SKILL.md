@@ -85,7 +85,7 @@ The CLI tags every trace `sim-<branch>` — that tag is the join key for [`edd:e
 
 ## Step 3 — Read the table
 
-Below 0.5 = real failure. Red cells print the judge's reason inline. See [references/scoring.md](../../references/scoring.md) for thresholds, judge biases, and non-determinism rules.
+Below 0.5 = real failure. Red cells print the judge's reason inline. See [references/score-reading.md](../../references/score-reading.md) for thresholds, judge biases, and non-determinism rules.
 
 For each red row:
 1. Open the trace at the printed Opik URL

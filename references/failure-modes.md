@@ -1,6 +1,6 @@
 # Failure modes — red judge → likely fix surface
 
-When a judge scores below 0.5, this doc tells you (a) whether the red is real, (b) where the cause most likely lives, and (c) when to stop tweaking. Read it *while* staring at a red cell. For the score-table mechanics see [`scoring.md`](scoring.md).
+When a judge scores below 0.5, this doc tells you (a) whether the red is real, (b) where the cause most likely lives, and (c) when to stop tweaking. Read it *while* staring at a red cell. For the score-table mechanics see [`score-reading.md`](score-reading.md).
 
 ## Before you fix anything — rule out judge issues
 
@@ -93,7 +93,7 @@ Two strikes on a prompt edit is a signal to widen the search, not narrow it furt
 
 ## See also
 
-- [`scoring.md`](scoring.md) — score-table mechanics + the "0 = not applicable" convention
+- [`score-reading.md`](score-reading.md) — score-table mechanics + the "0 = not applicable" convention
 - [`evaluator-selection.md`](evaluator-selection.md) — when "judge miscalibrated" is the right classification
 - [`../skills/run/SKILL.md`](../skills/run/SKILL.md) — inner-loop stop rules
 - [`../skills/experiment/SKILL.md`](../skills/experiment/SKILL.md) — same failure-mode taxonomy applies at experiment scale

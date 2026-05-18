@@ -81,5 +81,5 @@ Avoid generic names (`compliance`, `quality`) — they describe nothing and make
 
 - [`agent-analysis.md`](agent-analysis.md) — promise inventory feeds dimensions
 - [`failure-modes.md`](failure-modes.md) — judge biases to watch for when calibrating
-- [`scoring.md`](scoring.md) — score-table mechanics + binary scoring convention
+- [`score-reading.md`](score-reading.md) — score-table mechanics + binary scoring convention
 - [`../skills/scope-evals/SKILL.md`](../skills/scope-evals/SKILL.md) — creates judges from this guide
