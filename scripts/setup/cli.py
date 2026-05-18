@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""Eval-Driven Development CLI (setup phase).
-
-edd run "Hello agent"
-edd run scenarios.txt --evaluators "skill-routing,output-format"
-edd score --since 10          # trigger + poll judges on last N minutes of traces
-edd check
-"""
+"""edd — inner-loop CLI: run, score, check. See scripts/setup/CLAUDE.md."""
 
 import asyncio
 import json
@@ -144,7 +138,9 @@ async def _run(
     # See references/trace-inspection.md for the pattern and _local/ for examples.
 
     if not wait:
-        log.info("run complete — traces tagged. Run enrichment then `edd score --since N`.")
+        log.info(
+            "run complete — traces tagged. Run enrichment then `edd score --since N`."
+        )
         return
 
     # 6 + 7. --wait: resolve target judges, trigger, poll, print.
@@ -205,9 +201,9 @@ def score(
     """
     flag_targets = {n.strip() for n in evaluators.split(",")} if evaluators else set()
     client = OpikClient()
-    from_str = (
-        datetime.now(timezone.utc) - timedelta(minutes=since)
-    ).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    from_str = (datetime.now(timezone.utc) - timedelta(minutes=since)).strftime(
+        "%Y-%m-%dT%H:%M:%S.000Z"
+    )
 
     traces = client.search_traces(project, from_time=from_str)
     trace_ids = [t["id"] for t in traces]
@@ -264,6 +260,7 @@ def check():
 
         try:
             import httpx as _httpx
+
             url = settings.agent_endpoint
             # Use the base host — HEAD on the run endpoint may not be supported.
             base = url.split("/agents/")[0] if "/agents/" in url else url
@@ -271,7 +268,9 @@ def check():
             console.print("  [green]✓[/] Agent endpoint reachable")
         except Exception:
             log.exception("Agent endpoint check failed")
-            console.print("  [red]✗[/] AGENT_ENDPOINT unreachable — see log for details")
+            console.print(
+                "  [red]✗[/] AGENT_ENDPOINT unreachable — see log for details"
+            )
             errors.append("AGENT_ENDPOINT")
 
     if errors:

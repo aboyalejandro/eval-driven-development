@@ -1,25 +1,4 @@
-"""Headless agent runner — HTTP adapter.
-
-The framework assumes the agent under test is reachable over HTTP.
-
-Default contract (JSON, session-aware):
-    POST {AGENT_ENDPOINT}
-    Content-Type: application/json
-    body: {"message": <str>, "session_id": <str>}
-    response: JSON with `content` field containing the assistant reply
-
-If your agent's HTTP contract differs (different body shape, field names,
-auth scheme, response field, timeout, etc.), set AGENT_ADAPTER in .env:
-
-    AGENT_ADAPTER=_local.my_adapter:create_agent
-
-The adapter module must expose `create_agent(session_id, run_id, context)`
-returning an object with `arun(message) -> SimpleNamespace(content=<str>)`.
-See `PREREQUISITES.md` for the full contract and adapter examples.
-
-The agent is responsible for its own OTEL → Opik tracing. This adapter only
-invokes the endpoint and relays the text response.
-"""
+"""Headless HTTP adapter for the agent under test. See scripts/setup/CLAUDE.md + PREREQUISITES.md."""
 
 import importlib
 import sys
