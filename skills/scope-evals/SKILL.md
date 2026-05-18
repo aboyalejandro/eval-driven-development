@@ -1,5 +1,5 @@
 ---
-description: Derive evaluator dimensions from `.edd/promises.md`, list existing Opik evaluators, generate `_local/create_evaluators.py` for the gaps, and run it. Output is one judge per promise dimension in the Opik project, set to manual-trigger mode. Invoke as `edd:scope-evals` or when the user says "set up judges", "create evaluators", "scope the evals".
+description: Configure manual-trigger judges in Opik — derive one evaluator dimension per promise, list what already exists, generate `_local/create_evaluators.py` for the gaps, run it. Output is `.edd/evaluator-plan.md` + judges live in Opik with `enabled=False, sampling_rate=0`. Invoke as `edd:scope-evals` or when the user says "set up judges", "create evaluators", "scope the evals". For *firing* judges and reading scores, see `edd:run`.
 ---
 
 # edd:scope-evals — evaluator dimensions + Opik judges
@@ -67,15 +67,15 @@ Tools called: {{metadata.tools_called}}
 
 Return JSON: {"score": 0|1, "reason": "<one sentence>"}""",
     model="anthropic/claude-sonnet-4-6",
-    enabled=False,        # manual-trigger only
+    enabled=False,        # manual-trigger only — judges run only when `edd score` triggers
     sampling_rate=0,      # do not auto-fire on production traces
 )
 ```
 
-Critical settings:
-- `enabled=False, sampling_rate=0` — judges run only when `edd score` triggers them
-- Variable paths read from `metadata.*` (filled by `_local/enrich_traces_<sdk>.py`) — never from native SDK trace paths
-- Scoring convention: 1 = verified correct, 0 = failed OR not applicable (no half-credit, no NA)
+Rules baked into the template:
+- **Manual-trigger only.** `enabled=False, sampling_rate=0` — `edd score` fires the judge; nothing else does.
+- **Read from `metadata.*`.** Enrichment populates these (see `_local/enrich_traces_<sdk>.py`); never wire the judge to native SDK trace paths.
+- **Binary scoring.** 1 = explicitly verified correct, 0 = failed OR not applicable. No half-credit, no NA.
 
 ### 4. Run it
 
@@ -102,7 +102,9 @@ Append to `.edd/evaluator-plan.md` which trace paths each judge expects. This is
 - Creating one mega-judge that scores "overall quality" — score per dimension or you lose signal.
 - Leaving `enabled=True` or `sampling_rate>0` — judges will fire on every production trace and burn LLM spend.
 - Re-creating judges that already exist — list first, diff, then create only gaps.
-- Reading from native SDK trace paths in the judge prompt — write from `metadata.*` only, enrichment normalizes there.
+- Reading from native SDK trace paths in the judge prompt — write from `metadata.*` only.
+
+See also: [pipeline anti-patterns](../CLAUDE.md#pipeline-anti-patterns) (global).
 
 ## Next
 

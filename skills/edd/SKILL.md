@@ -1,5 +1,5 @@
 ---
-description: Eval-Driven Development router. Ask the user for mode (1/2/3) and aggression (1/2/3), persist to `.edd/session.json`, then delegate to the right sub-skill (`edd:scope-agent`, `edd:scope-evals`, `edd:run`, `edd:experiment`, `edd:optimisation`). Use after any change to prompts, tools, skills, or model routing. Invoke when the user says `/edd`, "run edd", "eval this change", or asks for an eval workflow without naming a phase.
+description: Eval-Driven Development router — picks the mode and dispatches. Asks two questions (mode 1/2/3, aggression 1/2/3), writes `.edd/session.json`, hands off to one of the phase skills. Use this when the user wants an eval workflow but hasn't named a phase. Skill-specific work belongs in `edd:scope-agent`, `edd:scope-evals`, `edd:run`, `edd:experiment`, or `edd:optimisation`.
 ---
 
 # edd — router
@@ -24,22 +24,7 @@ After changes to prompts, tool surface, skills, model routing, or memory injecti
 
 ## Persist session state
 
-Write `.edd/session.json` (gitignored) — every sub-skill reads from here:
-
-```json
-{
-  "mode": 1,
-  "aggression": 2,
-  "project": "<opik-project>",
-  "branch_tag": "sim-<git-branch>",
-  "topic": "<short-slug-of-change>",
-  "dataset_name": null,
-  "experiment_name": null,
-  "optimization_name": null
-}
-```
-
-Mint `topic` from the user hypothesis (5-word kebab slug). Leave dataset/experiment/optimization null — sub-skills fill those when needed.
+Write `.edd/session.json` with the keys listed in [`skills/CLAUDE.md`](../CLAUDE.md#shared-session-state). Mint `topic` from the user hypothesis (≤5-word kebab slug); leave `dataset_name` / `experiment_name` / `optimization_name` null — sub-skills fill those.
 
 ## Dispatch table
 
@@ -57,27 +42,8 @@ If either is stale, run `edd:scope-agent` and/or `edd:scope-evals` before `edd:r
 
 ## Discovery rule — derive, don't ask
 
-Never ask the user for evaluator names, dataset names, experiment names, or optimization names. Derive from:
+Never ask the user for evaluator names, dataset names, experiment names, or optimization names. Derive them per [naming conventions](../CLAUDE.md#naming-conventions); pull dimensions from `edd:scope-agent` + `edd:scope-evals` outputs.
 
-- agent source (skills, system prompt, tool list) → `edd:scope-agent`
-- existing Opik evaluators + gaps → `edd:scope-evals`
-- session topic + git branch → naming pattern `<project>-<topic>-v<N>`
+## See also
 
-## Sub-skill index
-
-- [`edd:scope-agent`](../scope-agent/SKILL.md) — extract promise inventory from agent source
-- [`edd:scope-evals`](../scope-evals/SKILL.md) — derive evaluator dimensions, list existing, create gaps
-- [`edd:run`](../run/SKILL.md) — Mode 1 + Mode 2 Phase 1 (scenarios → traces → score table)
-- [`edd:experiment`](../experiment/SKILL.md) — Mode 2 Phase 2 (dataset → experiment → inspect)
-- [`edd:optimisation`](../optimisation/SKILL.md) — Mode 3 (3A manual + 3B studio)
-
-## Anti-patterns
-
-- Re-deriving promise inventory every session — check `regressions.txt` first.
-- Asking the user for dataset/experiment names — derive them.
-- Running `edd:experiment` before `edd:run` is green — judges break at scale, you lose hours.
-- Optimization timelines spanning unrelated topics — one optimization name per topic.
-
-## References (load only when relevant)
-
-See [skills/CLAUDE.md](../CLAUDE.md) for the sitemap of `references/*.md` — each sub-skill points to the subset it needs.
+- [Sub-skill index + Pipeline DAG](../CLAUDE.md) — sitemap with pipeline overview, anti-patterns, stop-rules, session schema.

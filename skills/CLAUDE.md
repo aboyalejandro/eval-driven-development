@@ -36,6 +36,33 @@ All sub-skills read/write `.edd/session.json` (gitignored). Keys:
 | `dataset_name` | experiment | optimisation |
 | `experiment_name`, `optimization_name` | experiment, optimisation | inspect / handoff |
 
+## Pipeline anti-patterns
+
+Global rules — apply across every sub-skill. Skill-specific anti-patterns live inside each SKILL.md.
+
+- **Re-deriving cached outputs every session.** `regressions.txt` and Opik judges persist. Check timestamps and re-run scope-* only when source has changed.
+- **Optimization timelines spanning unrelated topics.** One `--optimization-name` per topic. Mixing topics on one timeline makes the Opik UI illegible.
+- **`edd:experiment` before `edd:run` is green.** Judges that misfire on 5 traces will misfire on 500 — find that out cheap.
+- **Co-mutating multiple prompt sections in one optimization run.** Attribution dies. One change per variant.
+- **Dataset rewrite in place.** New item shape ⇒ new version. Cross-version comparisons are noise.
+
+## Stopping rules
+
+- **Two prompt iterations on the same red judge ⇒ stop tweaking, widen the search.** The next thing to question is the evaluator, the dataset, or the underlying behavior model — not the prompt phrasing. See [`references/failure-modes.md`](../references/failure-modes.md) for prompt-iteration vs judge-noise distinction.
+- **Score-table green on regressions.txt ⇒ promote to experiment** (Mode 2) **or ship** (Mode 1).
+- **Optimization delta ≥ 0.1 with no regression elsewhere ⇒ keep.** Below ⇒ roll back.
+
+## Naming conventions
+
+| Artifact | Pattern | Notes |
+|---|---|---|
+| Trace branch tag | `sim-<git-branch>` | Auto-stamped by `edd run`; join key for `edd-build` |
+| Dataset | `<project>-<topic>-v<N>` | Bump `<N>` only when item shape changes |
+| Experiment | derived from dataset + variant (`<topic>-baseline`, `<topic>-post-fix`) | Set via `--experiment-name` |
+| Optimization | `<topic>-baseline-vs-fix` or `<topic>-baseline-vs-v2` | One per topic; pass via `--optimization-name` |
+
+All names are minted at runtime from session state — never pre-planned by the user.
+
 ## Reference docs
 
 Each skill points to the subset of [`references/`](../references/CLAUDE.md) it needs. Don't load all of them upfront — they're decision guides, not narrative docs.

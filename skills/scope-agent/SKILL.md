@@ -1,5 +1,5 @@
 ---
-description: Extract a promise inventory from agent source (skills, system prompt, tools) and write baseline regression scenarios. Output is `regressions.txt` at repo root + `.edd/promises.md` (inventory cache). Idempotent — skip if `regressions.txt` exists and agent source hasn't changed. Invoke as `edd:scope-agent` or when the user says "scope the agent", "extract promises", "build regressions".
+description: Extract the agent's promise inventory and write baseline regression scenarios. Produces `.edd/promises.md` (one line per skill/tool/promise) and `regressions.txt` (5–8 baseline scenarios at aggression 1). Idempotent — skip if both exist and agent source is unchanged. Invoke as `edd:scope-agent` or when the user says "scope the agent", "extract promises", "build regressions".
 ---
 
 # edd:scope-agent — promise inventory + regression baseline
@@ -73,8 +73,9 @@ If the router hasn't populated it yet, write minimal state:
 
 - Writing 20+ regression scenarios — keep it ≤8. Coverage, not volume.
 - Including diff-specific scenarios — those live in `scenarios.txt`, not `regressions.txt`.
-- Re-running scope-agent every session — check timestamps first.
 - Skipping the inventory and jumping to scenarios — the inventory is what evaluator selection consumes.
+
+See also: [pipeline anti-patterns](../CLAUDE.md#pipeline-anti-patterns) (global).
 
 ## Next
 
