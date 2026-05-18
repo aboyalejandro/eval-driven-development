@@ -124,3 +124,10 @@ same shape is fine.
   surgical and let optimization timelines stay legible.
 - **Skipping the trace link.** Without `source_trace_id` the experiment
   scores get orphaned from the actual conversation — debugging is guesswork.
+
+## See also
+
+- [`experiment-grouping.md`](experiment-grouping.md) — wrap multiple dataset versions under a timeline
+- [`evaluator-selection.md`](evaluator-selection.md) — pick the evaluator before designing the dataset shape
+- [`trace-enrichment.md`](trace-enrichment.md) — extractor depends on enrichment writing `metadata.*`
+- [`../skills/experiment/SKILL.md`](../skills/experiment/SKILL.md) — skill that runs `edd-build`

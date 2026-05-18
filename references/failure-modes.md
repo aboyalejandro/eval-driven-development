@@ -36,11 +36,7 @@ The score points; the trace explains. Before tweaking the prompt, open the trace
 
 ## Symptom → fix surface
 
-Once you've ruled out judge issues and confirmed the red is real, map the symptom to the most common cause:
-
-The "Evaluator family" column is a descriptor, not a name — your project's evaluators will have agent-specific names derived from `agent-analysis.md`. Match on the symptom, not on the label.
-
-## Symptom → fix surface
+Once you've ruled out judge issues and confirmed the red is real, map the symptom to the most common cause. The "Evaluator family" column is a descriptor, not a name — your project's evaluators will have agent-specific names derived from `agent-analysis.md`. Match on the symptom, not on the label.
 
 | Symptom in trace | Evaluator family | Likely cause | First place to look |
 |-----------------|-----------------|--------------|---------------------|
@@ -86,3 +82,18 @@ If you've tweaked the prompt twice and the same judge stays red, **stop tweaking
 Two strikes on a prompt edit is a signal to widen the search, not narrow it further.
 
 **Important distinction — prompt iterations vs. re-runs.** The "two strikes" rule counts *distinct prompt edits*, not repeat runs of the same trace. Apply the non-determinism rules above before counting a red as a strike: re-run the scenario once unchanged; only count the strike if the red holds across both runs.
+
+## Anti-patterns
+
+- **Tweaking the prompt before opening the trace.** The score points; the trace explains. Reading the score alone almost always sends you to the wrong fix surface.
+- **Treating a single red as a regression.** Re-run once before acting — judge non-determinism flips edge-case scores between runs.
+- **Counting a flicker as a strike** in the two-iterations rule. Strikes count *stable* reds across re-runs, not first-time reds.
+- **Fixing the prompt when the tool surface is broken.** No prompt edit repairs a missing tool call, wrong params, or an upstream API error. Check the trace tree first.
+- **Filing a judge as miscalibrated on one trace.** Calibration claims need ≥3 traces where the rubric disagrees with the actual content.
+
+## See also
+
+- [`scoring.md`](scoring.md) — score-table mechanics + the "0 = not applicable" convention
+- [`evaluator-selection.md`](evaluator-selection.md) — when "judge miscalibrated" is the right classification
+- [`../skills/run/SKILL.md`](../skills/run/SKILL.md) — inner-loop stop rules
+- [`../skills/experiment/SKILL.md`](../skills/experiment/SKILL.md) — same failure-mode taxonomy applies at experiment scale

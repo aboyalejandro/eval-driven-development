@@ -92,3 +92,17 @@ Level 1 scenarios plus: partial trigger phrases, adjacent intents that might act
 ### Level 3 — Adversarial
 
 Mostly edge cases designed to surface harness failures. Conflicting instructions, inputs near skill boundaries that might route incorrectly, scenarios where the agent might fabricate (empty result + specific-sounding ask), near-miss out-of-scope asks, requests that require multiple dependent tool calls where any one could be skipped. Focus: not "does the happy path work" but "where does the harness break."
+
+## Anti-patterns
+
+- **Mixing diff scenarios into `regressions.txt`.** Regressions are stable baselines per promise; scenarios are diff-specific. Mixing them inflates the regression set and drifts the baseline.
+- **Writing instances when you mean intents.** "What's the recovery score?" is one intent; rephrasing it ten ways scores the same dimension ten times and adds no coverage.
+- **Picking aggression by gut.** Match aggression to the change: prompt tightening = level 1; routing edit = level 2; safety surface change = level 3.
+- **Scenarios that don't exercise any judge.** Tag each scenario with the judge it should activate. If no judge fits, either the scenario is decoration or you're missing a judge.
+
+## See also
+
+- [`agent-analysis.md`](agent-analysis.md) — promises feed scenario intents
+- [`evaluator-selection.md`](evaluator-selection.md) — tag each scenario with the judge it exercises
+- [`../skills/run/SKILL.md`](../skills/run/SKILL.md) — fires scenarios at the chosen aggression level
+- [`../skills/scope-agent/SKILL.md`](../skills/scope-agent/SKILL.md) — writes `regressions.txt` at aggression 1

@@ -32,3 +32,16 @@ To get a clean view of a single dimension, filter with `edd-inspect --evaluator 
 ## Comparing runs
 
 Tag the run id and branch so you can compare tables across iterations in the Opik UI. The score delta between two runs of the same scenarios is the cleanest signal — absolute scores depend on judge calibration, but deltas catch real regressions.
+
+## Anti-patterns
+
+- **Reading the digest average on binary "0 = N/A" judges.** Aggregate is meaningless — filter by evaluator name and read individual failures instead.
+- **Acting on a single low score.** Re-run once before declaring a regression; the score may flicker.
+- **Comparing absolute scores across projects.** Different rubrics, different model versions — only intra-project deltas are reliable.
+- **Counting `-` (judge didn't run) the same as `0` (judge ran and failed).** Inspect `--evaluators` flag or judge `enabled` state when you see `-`.
+
+## See also
+
+- [`failure-modes.md`](failure-modes.md) — what to do once a red is confirmed real
+- [`evaluator-selection.md`](evaluator-selection.md) — designing rubrics that aren't biased
+- [`../skills/run/SKILL.md`](../skills/run/SKILL.md) — fires the judges and prints this table

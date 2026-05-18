@@ -122,3 +122,10 @@ After each SDK run, use the matching enrichment script before scoring:
 - **Treating all promises as baseline.** `regressions.txt` bloats; every run fires 30 evaluators; signal drowns in noise.
 - **Extracting promises without reading the output format.** The scenario generates an answer in the wrong shape and the judge fires for the wrong reason.
 - **Running enrichment without SDK discrimination.** One script overwrites another SDK's metadata with empty/wrong values. Each enrichment script must skip traces it doesn't own.
+
+## See also
+
+- [`evaluator-selection.md`](evaluator-selection.md) — convert each promise into a judge dimension
+- [`scenario-design.md`](scenario-design.md) — turn promises into baseline + diff scenarios
+- [`trace-inspection.md`](trace-inspection.md) — pull a real trace once the agent is running
+- [`../skills/scope-agent/SKILL.md`](../skills/scope-agent/SKILL.md) — skill that drives this extraction
