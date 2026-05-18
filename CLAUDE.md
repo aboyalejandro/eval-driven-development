@@ -38,4 +38,4 @@ Fresh-agent workflow:
 
 ## Caveat — Opik REST coupling
 
-The framework is tightly coupled to Opik's REST API. Endpoints used by `scripts/shared/opik_client.py` are catalogued in [`references/opik-endpoint-cheatsheet.md`](references/opik-endpoint-cheatsheet.md). If a previously-working setup starts erroring after time has passed, suspect API drift first — check Opik release notes before debugging the framework.
+The framework is tightly coupled to Opik's REST API. Endpoints used by `scripts/shared/opik_client.py` are catalogued in [`references/opik-endpoints.md`](references/opik-endpoints.md). If a previously-working setup starts erroring after time has passed, suspect API drift first — check Opik release notes before debugging the framework.

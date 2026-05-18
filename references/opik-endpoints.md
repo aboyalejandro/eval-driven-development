@@ -118,3 +118,7 @@ model's provider isn't credentialed in the workspace.
 
 `OPIK_URL` is the deployment root (`https://opik.example.com`), not the
 `/v1/private` API base.
+
+## See also
+
+- [`../scripts/shared/CLAUDE.md`](../scripts/shared/CLAUDE.md) — `OpikClient` wraps these endpoints; add methods here if a new one is needed

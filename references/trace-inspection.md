@@ -94,7 +94,16 @@ Whatever the instrumentor decides. Read it once, write it down, design judge var
 
 15 minutes of inspection saves hours of guessing-then-debugging judge prompts.
 
-## Next
+## Anti-patterns
 
-→ [`trace-enrichment.md`](trace-enrichment.md) — Pattern A vs Pattern B, skeleton enrichment script, SDK discrimination.
-→ [`evaluator-selection.md`](evaluator-selection.md) — wire those paths into judge definitions.
+- **Guessing the trace shape from the SDK name.** Each instrumentor decides — Agno's OpenInference puts the user message at `input.value`, Anthropic SDK at `message`. Pull one real trace before writing any judge.
+- **Trusting `trace.has_tool_spans`.** Opik computes it from `span.type == "tool"`; many instrumentors emit tool spans with `span.type = "general"` and `kind=TOOL` in attributes. Walk spans yourself.
+- **Designing judges before knowing the shape.** A judge that reads `input.value` is OpenInference-only — it silently breaks when a second SDK joins the project.
+- **Skipping the inspection step on an "obvious" SDK.** Even within one SDK family, instrumentor versions change field names.
+
+## See also
+
+- [`trace-enrichment.md`](trace-enrichment.md) — Pattern A vs Pattern B, skeleton enrichment script, SDK discrimination
+- [`evaluator-selection.md`](evaluator-selection.md) — wire the paths you discover into judge definitions
+- [`../skills/scope-evals/SKILL.md`](../skills/scope-evals/SKILL.md) — uses these paths when creating judges
+- [`../scripts/shared/CLAUDE.md`](../scripts/shared/CLAUDE.md) — the `OpikClient` you'll call to fetch traces

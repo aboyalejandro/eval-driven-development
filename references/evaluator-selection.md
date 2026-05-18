@@ -76,3 +76,10 @@ Avoid generic names (`compliance`, `quality`) — they describe nothing and make
 - **Picking the evaluator after the experiment runs.** Scores become "what did this judge happen to fire on" instead of "did the branch move the needle on X".
 - **Using an uncalibrated LLM judge as ground truth.** Two iterations in, you can't tell whether the prompt regressed or the judge drifted.
 - **One mega-judge.** A judge that scores "everything" produces scores nobody trusts. Per-dimension judges are debuggable.
+
+## See also
+
+- [`agent-analysis.md`](agent-analysis.md) — promise inventory feeds dimensions
+- [`failure-modes.md`](failure-modes.md) — judge biases to watch for when calibrating
+- [`score-reading.md`](score-reading.md) — score-table mechanics + binary scoring convention
+- [`../skills/scope-evals/SKILL.md`](../skills/scope-evals/SKILL.md) — creates judges from this guide

@@ -68,3 +68,10 @@ of "the score moved but I can't explain why".
   and you end up with parallel timelines.
 - **Skipping the grouping for iteration runs.** You'll re-discover the
   baseline score every time.
+
+## See also
+
+- [`dataset-design.md`](dataset-design.md) — same dataset version across an optimization timeline
+- [`failure-modes.md`](failure-modes.md) — sim-only failure modes specific to grouped runs
+- [`../skills/experiment/SKILL.md`](../skills/experiment/SKILL.md) — uses `--optimization-name`
+- [`../skills/optimisation/SKILL.md`](../skills/optimisation/SKILL.md) — 3A path lives on a single optimization timeline

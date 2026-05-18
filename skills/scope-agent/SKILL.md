@@ -20,16 +20,14 @@ Discovery step 1 of the eval pipeline. Reads the agent under test, lists what it
 
 **Skip** when `regressions.txt` and `.edd/promises.md` both exist and the agent source's last-modified time is older than `.edd/promises.md`. Re-deriving wastes tokens and drifts the baseline.
 
-## Steps
-
-### 1. Locate agent source
+## Step 1 — Locate agent source
 
 Ask the user for the path if not in current repo. Common shapes:
 - Single system prompt file
 - Multi-skill agent (Agno/OpenAI Agents/Anthropic SDK) — skills + tool list + router
 - HTTP service — read the route handler + downstream skill loader
 
-### 2. Extract promises
+## Step 2 — Extract promises
 
 Follow [references/agent-analysis.md](../../references/agent-analysis.md). For each skill / tool / prompt section, write one line in `.edd/promises.md`:
 
@@ -45,7 +43,7 @@ Example:
 
 Each promise becomes one evaluator dimension downstream (`edd:scope-evals` consumes this file).
 
-### 3. Write `regressions.txt`
+## Step 3 — Write `regressions.txt`
 
 One baseline scenario per core promise, 5–8 lines total. Follow [references/scenario-design.md](../../references/scenario-design.md) — use aggression level 1 (harness validation, happy path). Format: plain string per line, or JSON for scenarios that need `context` / `followups` / `evaluators`.
 
@@ -56,7 +54,7 @@ What did the team ship last sprint?
 
 `regressions.txt` is gitignored at the framework level — **commit it in your fork or working branch**. It persists across sessions and protects against regressions.
 
-### 4. Update `.edd/session.json`
+## Step 4 — Update `.edd/session.json`
 
 If the router hasn't populated it yet, write minimal state:
 ```json

@@ -117,3 +117,10 @@ variables = {
 - **Baking instrumentor assumptions into the framework core.** Enrichment lives in your fork's `_local/`. The setup CLI must not assume any SDK.
 - **Using `trace.has_tool_spans` for trajectory judges.** Opik computes this from `span.type`, not span attributes. Many instrumentors set `span.type = "general"` while emitting `kind=TOOL` in attributes. Walk spans yourself.
 - **Putting the user message in a single hardcoded variable across all agents.** OpenInference uses `input.value`, LangChain uses `messages[-1].content`, Anthropic raw uses `messages` array. Normalize to `metadata.user_message` once; let judges depend on the normalized shape only.
+
+## See also
+
+- [`trace-inspection.md`](trace-inspection.md) — fetch a trace and identify its native shape first
+- [`evaluator-selection.md`](evaluator-selection.md) — judges read from `metadata.*` paths this script populates
+- [`../skills/run/SKILL.md`](../skills/run/SKILL.md) — run enrichment between `edd run` and `edd score`
+- [`../scripts/shared/CLAUDE.md`](../scripts/shared/CLAUDE.md) — `update_trace_metadata` on `OpikClient`
