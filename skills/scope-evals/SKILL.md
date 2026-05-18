@@ -35,14 +35,10 @@ Write derived dimensions to `.edd/evaluator-plan.md`:
 ```python
 import sys; sys.path.insert(0, 'scripts')
 from shared.opik_client import OpikClient
-c = OpikClient()
-evs = c.get_evaluators().get('content', [])
-for ev in evs:
-    s = (ev.get('code', {}).get('schema') or [{}])[0]
-    print(s.get('name', ev.get('name')))
+print('\n'.join(OpikClient().list_evaluator_names()))
 ```
 
-Mark each dimension in `.edd/evaluator-plan.md` as **REUSE** (match exists) or **CREATE** (gap).
+Pass `project="<opik-project>"` to filter to one project. Mark each dimension in `.edd/evaluator-plan.md` as **REUSE** (match exists) or **CREATE** (gap).
 
 ## Step 3 — Generate `_local/create_evaluators.py`
 

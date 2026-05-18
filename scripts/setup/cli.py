@@ -145,12 +145,10 @@ async def _run(
     evals = client.get_evaluators().get("content", [])
     project_evals = [ev for ev in evals if ev.get("project_name") == project]
 
-    def _name(ev: dict) -> str:
-        schema = ev.get("code", {}).get("schema") or [{}]
-        return schema[0].get("name", ev.get("name", ""))
-
     if targets:
-        project_evals = [ev for ev in project_evals if _name(ev) in targets]
+        project_evals = [
+            ev for ev in project_evals if client.evaluator_schema_name(ev) in targets
+        ]
     else:
         project_evals = [ev for ev in project_evals if ev.get("enabled")]
 
@@ -163,7 +161,7 @@ async def _run(
     client.trigger_evaluation(project_id, trace_ids, [ev["id"] for ev in project_evals])
     log.info("triggered %d judges on %d traces", len(project_evals), len(trace_ids))
 
-    expected_names = {_name(ev) for ev in project_evals}
+    expected_names = {client.evaluator_schema_name(ev) for ev in project_evals}
     scored = poll_scores(client, trace_ids, timeout, expected_names, triggered_after)
     if not print_results(scored):
         raise typer.Exit(1)
@@ -206,12 +204,12 @@ def score(
     evals = client.get_evaluators().get("content", [])
     project_evals = [ev for ev in evals if ev.get("project_name") == project]
 
-    def _name(ev: dict) -> str:
-        schema = ev.get("code", {}).get("schema") or [{}]
-        return schema[0].get("name", ev.get("name", ""))
-
     if flag_targets:
-        project_evals = [ev for ev in project_evals if _name(ev) in flag_targets]
+        project_evals = [
+            ev
+            for ev in project_evals
+            if client.evaluator_schema_name(ev) in flag_targets
+        ]
     # No filter by enabled — score is an explicit manual trigger; disabled judges fire too.
 
     if not project_evals:
@@ -223,7 +221,7 @@ def score(
     client.trigger_evaluation(project_id, trace_ids, [ev["id"] for ev in project_evals])
     log.info("triggered %d judges on %d traces", len(project_evals), len(trace_ids))
 
-    expected = {_name(ev) for ev in project_evals}
+    expected = {client.evaluator_schema_name(ev) for ev in project_evals}
     scored = poll_scores(client, trace_ids, timeout, expected, triggered_after)
     if not print_results(scored):
         raise typer.Exit(1)
