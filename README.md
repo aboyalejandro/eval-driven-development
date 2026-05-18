@@ -153,6 +153,6 @@ Pure UI changes, refactors that don't touch prompts or tools, bug fixes with a r
 
 ## Resources
 
-- [skills/run/SKILL.md](skills/run/SKILL.md) — invoke as `/eval-driven-development:run` in Claude Code (install plugin with `--plugin-dir`)
+- [skills/CLAUDE.md](skills/CLAUDE.md) — sitemap of sub-skills (`edd:edd` router, `edd:scope-agent`, `edd:scope-evals`, `edd:run`, `edd:experiment`, `edd:optimisation`). Install plugin with `--plugin-dir`, then invoke `/edd:<skill>` in Claude Code.
 - [PREREQUISITES.md](PREREQUISITES.md) — integration contract + adapter pattern
-- [references/](references/) — agent analysis, evaluator selection, trace inspection, scenario design
+- [references/CLAUDE.md](references/CLAUDE.md) — agent analysis, evaluator selection, trace inspection, scenario design

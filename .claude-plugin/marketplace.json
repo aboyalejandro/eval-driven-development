@@ -1,0 +1,12 @@
+{
+  "name": "edd",
+  "owner": { "name": "Alejandro Aboy" },
+  "plugins": [
+    {
+      "name": "edd",
+      "source": "./",
+      "description": "Eval-Driven Development — split skills for scoping agents, running scenarios, building datasets, running experiments, and optimizing prompts against Opik judges",
+      "version": "2.0.0"
+    }
+  ]
+}

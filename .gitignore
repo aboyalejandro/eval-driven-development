@@ -31,3 +31,6 @@ regressions.txt
 docs/*
 !docs/.gitkeep
 _local/
+
+# Session state shared across edd:* sub-skills
+.edd/
