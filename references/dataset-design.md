@@ -28,15 +28,15 @@ keeps the contract minimal on purpose — extend, don't refactor.
 The default extractor reads exactly two fields, no fallbacks:
 
 ```
-trace.input.user_message      → item.user_message
-trace.output.assistant_response → item.assistant_response
+trace.metadata.user_message       → item.user_message
+trace.metadata.assistant_response → item.assistant_response
 ```
 
-These are the **enrichment-normalized** convention — written by `_local/enrich_traces_<sdk>.py` after the agent ships its native trace shape. No SDK emits these keys natively; every OTEL runtime emits something else (Agno: `input.value`; Anthropic SDK: `message`; OpenAI Agents: `input[0].content`; LangChain: `messages[-1].content`). See [`trace-inspection.md`](trace-inspection.md) for the per-SDK paths.
+These are the **enrichment-normalized** convention — written by `_local/enrich_traces_<sdk>.py` via `OpikClient.update_trace_metadata`. Same source of truth as the judges (which read `metadata.*` variable paths). No SDK emits these keys natively; every OTEL runtime emits something else (Agno: `input.value`; Anthropic SDK: `message`; OpenAI Agents: `input[0].content`; LangChain: `messages[-1].content`). See [`trace-inspection.md`](trace-inspection.md) for the per-SDK paths.
 
 **Two ways to satisfy the default extractor:**
 
-1. **Enrich first** — run `_local/enrich_traces_<sdk>.py` between `edd run` and `edd-build`. Enrichment writes `metadata.user_message` / `metadata.assistant_response` AND copies into `trace.input.user_message` / `trace.output.assistant_response` for downstream readers. See [`trace-enrichment.md`](trace-enrichment.md).
+1. **Enrich first** — run `_local/enrich_traces_<sdk>.py` between `edd run` and `edd-build`. Enrichment patches `trace.metadata.*`; the default extractor and the judges read from the same place. See [`trace-enrichment.md`](trace-enrichment.md).
 2. **Custom extractor** — supply `--extractor _local.my_extractor:extract`. One function returning `{user_message, assistant_response}` per trace, importable from the repo root.
 
 If neither path is set up, `--dry-run` reports zero items extracted. **Always `--dry-run` first** to catch this before a real write:
