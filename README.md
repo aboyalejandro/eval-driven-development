@@ -153,6 +153,7 @@ Pure UI changes, refactors that don't touch prompts or tools, bug fixes with a r
 
 ## Resources
 
-- [skills/CLAUDE.md](skills/CLAUDE.md) — sitemap of sub-skills (`edd:edd` router, `edd:scope-agent`, `edd:scope-evals`, `edd:run`, `edd:experiment`, `edd:optimisation`). Install plugin with `--plugin-dir`, then invoke `/edd:<skill>` in Claude Code.
+- [DEVELOPMENT.md](DEVELOPMENT.md) — local install: register the plugin, install the CLI, wire `.env`, troubleshoot
+- [skills/CLAUDE.md](skills/CLAUDE.md) — sitemap of sub-skills (`edd:edd` router, `edd:scope-agent`, `edd:scope-evals`, `edd:run`, `edd:experiment`, `edd:optimisation`)
 - [PREREQUISITES.md](PREREQUISITES.md) — integration contract + adapter pattern
 - [references/CLAUDE.md](references/CLAUDE.md) — agent analysis, evaluator selection, trace inspection, scenario design
