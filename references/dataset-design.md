@@ -25,20 +25,25 @@ keeps the contract minimal on purpose — extend, don't refactor.
 
 ## Trace shape and the extractor
 
-The default extractor reads `trace.input.user_message` / `trace.output.assistant_response`. Most modern OTEL runtimes (Agno, LangChain, LlamaIndex via OpenInference) emit different keys:
+The default extractor reads exactly two fields, no fallbacks:
 
 ```
-trace.input["input.value"]   → user message
-trace.output["output.value"] → assistant response
+trace.input.user_message      → item.user_message
+trace.output.assistant_response → item.assistant_response
 ```
 
-If you skip `--extractor` with an OpenInference-instrumented agent, the default extractor returns `None` for every item and the dataset ends up empty. Always do a `--dry-run` first to verify items extract cleanly:
+These are the **enrichment-normalized** convention — written by `_local/enrich_traces_<sdk>.py` after the agent ships its native trace shape. No SDK emits these keys natively; every OTEL runtime emits something else (Agno: `input.value`; Anthropic SDK: `message`; OpenAI Agents: `input[0].content`; LangChain: `messages[-1].content`). See [`trace-inspection.md`](trace-inspection.md) for the per-SDK paths.
+
+**Two ways to satisfy the default extractor:**
+
+1. **Enrich first** — run `_local/enrich_traces_<sdk>.py` between `edd run` and `edd-build`. Enrichment writes `metadata.user_message` / `metadata.assistant_response` AND copies into `trace.input.user_message` / `trace.output.assistant_response` for downstream readers. See [`trace-enrichment.md`](trace-enrichment.md).
+2. **Custom extractor** — supply `--extractor _local.my_extractor:extract`. One function returning `{user_message, assistant_response}` per trace, importable from the repo root.
+
+If neither path is set up, `--dry-run` reports zero items extracted. **Always `--dry-run` first** to catch this before a real write:
 
 ```bash
 edd-build ... --dry-run
 ```
-
-Inspect the two sample items printed. If `user_message` and `assistant_response` are empty strings, you need a custom extractor. See `references/trace-inspection.md` for the pattern; the extractor is a plain Python callable — one function in a `.py` file, importable from the repo root.
 
 `trace.metadata` (enriched fields like `tools_called`, `tool_count`) is copied into `item.trace_metadata` automatically when present. Judges in experiments read `tools_called` from the original trace via `metadata.tools_called` variable path — the dataset item carries it for reference, not for judge resolution.
 

@@ -21,24 +21,21 @@ app = typer.Typer(add_completion=False)
 
 
 def _default_extractor(trace: dict) -> dict | None:
-    """Pull user_message + assistant_response from canonical span fields.
+    """Read the enrichment-normalized convention: `user_message` + `assistant_response`.
 
-    Trace shape Opik exposes:
-      input  = {"user_message": "...", ...} OR a plain string
-      output = {"assistant_response": "...", ...} OR a plain string
-
-    Caller can swap this for a runtime-specific function via --extractor.
+    Reads `trace.input.user_message` and `trace.output.assistant_response` — the
+    fields that `_local/enrich_traces_<sdk>.py` is expected to write. If your
+    traces emit native SDK shapes (Agno `input.value`, OpenAI Agents `input[0].content`,
+    etc.) and you haven't enriched them, the dry run will report zero items —
+    that's the signal to either run enrichment first or pass a custom
+    `--extractor module:function`. See `references/trace-enrichment.md`.
     """
     inp = trace.get("input") or {}
     out = trace.get("output") or {}
-    if isinstance(inp, dict):
-        user_message = inp.get("user_message") or inp.get("message") or ""
-    else:
-        user_message = str(inp)
-    if isinstance(out, dict):
-        assistant_response = out.get("assistant_response") or out.get("response") or ""
-    else:
-        assistant_response = str(out)
+    user_message = inp.get("user_message", "") if isinstance(inp, dict) else str(inp)
+    assistant_response = (
+        out.get("assistant_response", "") if isinstance(out, dict) else str(out)
+    )
     if not user_message or not assistant_response:
         return None
     item: dict[str, Any] = {
