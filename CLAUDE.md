@@ -8,122 +8,20 @@ Distributed CLAUDE.md docs — load the one closest to where you're working:
 
 | Area | Doc | What lives there |
 |---|---|---|
-| Skills (workflow entry) | [`skills/CLAUDE.md`](skills/CLAUDE.md) | Sub-skill index + DAG: `edd` router → `scope-agent` → `scope-evals` → `run` → `experiment` → `optimisation` |
-| Framework engine | [`scripts/CLAUDE.md`](scripts/CLAUDE.md) | Package layout, console scripts → modules, install steps |
+| Skills (workflow entry) | [`skills/CLAUDE.md`](skills/CLAUDE.md) | Sub-skill index, pipeline DAG, shared session state, cross-cutting anti-patterns / stopping rules / naming conventions |
+| Framework engine | [`scripts/CLAUDE.md`](scripts/CLAUDE.md) | Package layout, console scripts → modules, install |
 | Inner loop (CLI) | [`scripts/setup/CLAUDE.md`](scripts/setup/CLAUDE.md) | `edd run` / `edd score` / `edd check`, trace tagging, custom adapters |
 | Outer loop (CLI) | [`scripts/simulation/CLAUDE.md`](scripts/simulation/CLAUDE.md) | `edd-build` / `edd-run` / `edd-inspect`, dataset naming, optimization grouping |
-| Opik REST + settings | [`scripts/shared/CLAUDE.md`](scripts/shared/CLAUDE.md) | `OpikClient` surface, env vars, REST coupling caveat |
+| Opik REST + settings | [`scripts/shared/CLAUDE.md`](scripts/shared/CLAUDE.md) | `OpikClient` surface, env vars (canonical list), REST coupling caveat |
 | Decision guides | [`references/CLAUDE.md`](references/CLAUDE.md) | Index of `references/*.md` and when to load each |
 
-## Layout
+For first-time setup steps see [`DEVELOPMENT.md`](DEVELOPMENT.md). For the integration contract see [`PREREQUISITES.md`](PREREQUISITES.md). For required env vars see [`scripts/shared/CLAUDE.md`](scripts/shared/CLAUDE.md).
 
-```
-PREREQUISITES.md         ← read first — integration contract + Opik REST caveat
-.env.example, .env       ← project config (.env gitignored)
-scenarios.example.txt, scenarios.txt    ← per-agent scenarios (.txt gitignored)
-regressions.example.txt, regressions.txt ← per-agent baselines (.txt gitignored)
-.edd/                    ← session state shared across edd:* sub-skills (gitignored)
-.claude-plugin/plugin.json
-skills/                  ← workflow entry points (split per phase)
-  edd/                     ← router — asks mode + aggression, dispatches
-  scope-agent/             ← extract promise inventory → regressions.txt
-  scope-evals/             ← derive judge dimensions, create gaps in Opik
-  run/                     ← Mode 1 + Mode 2 Phase 1 (inner loop)
-  experiment/              ← Mode 2 Phase 2 (dataset + experiment + inspect)
-  optimisation/            ← Mode 3 (3A manual + 3B studio)
-scripts/                 ← framework engine
-  setup/                   ← setup phase: edd CLI
-  simulation/              ← simulation phase: edd-build / edd-run / edd-inspect
-  shared/                  ← REST wrapper (opik_client.py)
-  pyproject.toml
-references/ ← decision guides (loaded on demand)
-```
-
-## Setup
-
-```bash
-cd scripts
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e .
-cd ..
-cp .env.example .env   # fill in OPIK_URL, OPIK_API_KEY, OPIK_OTLP_ENDPOINT
-```
-
-Required env vars: `OPIK_URL`, `OPIK_API_KEY`, `OPIK_OTLP_ENDPOINT` (Opik instance), and `AGENT_ENDPOINT` (HTTP URL of the agent under test).
-
-The default HTTP contract is `POST {AGENT_ENDPOINT}` with JSON body `{"message": "...", "session_id": "..."}` → JSON response with `content` field. For the substack-author-agent multi-SDK server, endpoints are `/agents/agno/runs`, `/agents/claude/runs`, `/agents/openai/runs`. See `PREREQUISITES.md` for the full integration contract.
-
-## Commands
-
-All commands run from the **repo root** with the venv active (`source scripts/.venv/bin/activate`).
-
-### Setup — inner loop (minutes)
-
-```bash
-edd check                                   # verify Opik connection
-
-# No enrichment needed (simple agents):
-edd run "Hello agent" --wait                # single message — emit + score in one shot
-edd run scenarios.txt --wait --evaluators "your-evaluator-a,your-evaluator-b"
-
-# With enrichment (runtime needs trace-shape normalization before scoring):
-edd run scenarios.txt                                  # emit + tag only (no judges)
-python _local/enrich_traces_<sdk>.py --since-minutes 5  # SDK-specific: agno / claude / openai
-edd score --since 10                                   # trigger judges on last N minutes of traces
-```
-
-`scenarios.txt`: one scenario per line — plain string or JSON with optional `context`, `followups`, `evaluators` fields.
-
-### Simulation — durable dataset + experiment
-
-```bash
-# 1. Build dataset from sim traces
-edd-build \
-  --project <opik-project> \
-  --dataset-name <project>-<topic>-v1 \
-  --branch-tag sim-$(git rev-parse --abbrev-ref HEAD) \
-  --from "$(date -u -v-6H +%Y-%m-%dT%H:%M:%SZ)" \
-  --dry-run   # preview without writing
-
-# 2. Run experiment
-edd-run \
-  --project <opik-project> \
-  --dataset-name <project>-<topic>-v1 \
-  --evaluator "your-evaluator-a,your-evaluator-b" \
-  --branch-tag sim-$(git rev-parse --abbrev-ref HEAD)
-
-# 3. Inspect results
-edd-inspect --experiment-name <name-from-previous-step>
-```
-
-## Architecture
-
-Two-phase eval loop over three primitives (headless runner, traces, judges):
-
-```
-setup:       edit → run scenarios → score traces → read table → fix or ship
-simulation:  curate dataset → run experiment → compare on timeline → keep or roll back
-```
-
-**Entry point to touch:** `scripts/setup/agent.py` — implement `create_agent()` to return an object with `arun(message) → response.content`. Wire OTEL instrumentor here. The rest of the scripts consume traces via Opik REST.
-
-**Module roles:**
-
-| Module | Command | Role |
-|---|---|---|
-| `setup/cli.py` | `edd` | Orchestrator — run scenarios, tag traces, trigger judges, poll scores |
-| `setup/agent.py` | — | **Only file you must edit** — `create_agent` factory + OTEL setup |
-| `setup/results.py` | — | Renders per-dimension score table with inline judge reasoning |
-| `shared/opik_client.py` | — | REST wrapper for Opik (traces, datasets, experiments, evaluators) |
-| `simulation/build_dataset.py` | `edd-build` | Converts sim traces → Opik dataset |
-| `simulation/run_experiment.py` | `edd-run` | Runs dataset through judges under an optimization timeline |
-| `simulation/inspect_experiment.py` | `edd-inspect` | Experiment digest + failure surface |
-
-## Key constraints
+## Key constraints (gotchas not documented elsewhere)
 
 - `create_agent` must name the agent starting with `sim-{run_id}-` so traces are filterable by branch tag.
 - Don't inject context by concatenating into the user message — mirror how production traffic arrives.
-- `--dry-run` before every `edd-build` run to verify the extractor shape.
+- `--dry-run` before every `edd-build` to verify the extractor shape.
 - Supply `--extractor module:function` when trace shape differs from defaults (`trace.input.user_message` / `trace.output.assistant_response`).
 - Dataset naming convention: `<project>-<topic>-v<N>`. Pin `dataset_version_id` per experiment; bump the name to start a new optimization timeline.
 
@@ -131,29 +29,13 @@ simulation:  curate dataset → run experiment → compare on timeline → keep 
 
 `scenarios.txt` and `regressions.txt` (root) are gitignored — they're per-agent, not framework files. The framework ships `*.example.txt` templates only.
 
-Workflow on a fresh agent:
-
-1. Run `references/agent-analysis.md` extraction → produce a promise inventory.
+Fresh-agent workflow:
+1. Run [`references/agent-analysis.md`](references/agent-analysis.md) extraction → produce a promise inventory.
 2. Copy `regressions.example.txt` → `regressions.txt`. Populate with 5–8 baseline scenarios (one per core promise). **Commit this in your fork / working branch** — it persists across sessions.
-3. Copy `scenarios.example.txt` → `scenarios.txt`. Generate diff-specific scenarios per session.
+3. Copy `scenarios.example.txt` → `scenarios.txt`. Regenerate diff-specific scenarios per session.
 
-**Always check for an existing `regressions.txt` before re-deriving baselines.** If it's present, read it first — running fresh agent-analysis every session wastes tokens and drifts the baseline.
-
-## Reference docs
-
-Read in this order:
-
-- `PREREQUISITES.md` (root) — **read first** — integration contract (agent over HTTP, agent traces to Opik directly, Opik REST coupling caveat)
-- `references/agent-analysis.md` — extract promise inventory from any agent source
-- `references/trace-inspection.md` — inspect your trace shape, write enrichment if your judges need normalization
-- `references/evaluator-selection.md` — derive dimensions from promises, then pick or build judges; **drives scenario design and dataset shape**
-- `references/scenario-design.md` — derive scenario intents from promises; tag each with the judge names from evaluator-selection
-- `references/scoring.md` — how to read the score table
-- `references/failure-modes.md` — red judge → likely fix surface (symptom-first, not evaluator-name-first)
-- `references/dataset-design.md` — item shape, coverage targets, naming; anchored to the evaluator from evaluator-selection
-- `references/experiment-grouping.md` — when to wrap experiments in an optimization
-- `references/opik-endpoint-cheatsheet.md` — REST endpoints the scripts use
+**Always check for an existing `regressions.txt` before re-deriving baselines.** Re-running agent-analysis every session wastes tokens and drifts the baseline.
 
 ## Caveat — Opik REST coupling
 
-The framework is tightly coupled to Opik's REST API. Endpoints used by `scripts/shared/opik_client.py` are listed in `references/opik-endpoint-cheatsheet.md`. If a previously-working setup starts erroring after time has passed, suspect API drift first — check Opik release notes before debugging the framework itself.
+The framework is tightly coupled to Opik's REST API. Endpoints used by `scripts/shared/opik_client.py` are catalogued in [`references/opik-endpoint-cheatsheet.md`](references/opik-endpoint-cheatsheet.md). If a previously-working setup starts erroring after time has passed, suspect API drift first — check Opik release notes before debugging the framework.
