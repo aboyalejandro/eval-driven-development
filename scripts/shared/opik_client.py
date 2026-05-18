@@ -123,6 +123,24 @@ class OpikClient:
             "GET", "/v1/private/automations/evaluators", params={"size": 500}
         )
 
+    @staticmethod
+    def evaluator_schema_name(ev: dict) -> str:
+        """Canonical schema name of an evaluator rule.
+
+        Lives at `code.schema[0].name` in the REST payload; falls back to
+        the top-level `name` when absent. This is the string the
+        `--evaluator` flag and score-table headers use everywhere.
+        """
+        schema = (ev.get("code", {}) or {}).get("schema") or [{}]
+        return schema[0].get("name") or ev.get("name") or ""
+
+    def list_evaluator_names(self, project: str | None = None) -> list[str]:
+        """Schema names of evaluators in the workspace, optionally filtered to one project."""
+        evs = self.get_evaluators().get("content", [])
+        if project is not None:
+            evs = [e for e in evs if e.get("project_name") == project]
+        return [n for n in (self.evaluator_schema_name(e) for e in evs) if n]
+
     def trigger_evaluation(
         self, project_id: str, trace_ids: list[str], rule_ids: list[str]
     ) -> dict:

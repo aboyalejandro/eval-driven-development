@@ -26,8 +26,7 @@ def _find_evaluators(client: OpikClient, project: str, names: list[str]) -> list
     found = []
     for name in names:
         for ev in candidates:
-            schema = (ev.get("code", {}) or {}).get("schema") or [{}]
-            if schema[0].get("name") == name or ev.get("name") == name:
+            if client.evaluator_schema_name(ev) == name:
                 found.append(ev)
                 break
         else:
@@ -171,12 +170,7 @@ def main(
         )
         raise typer.Exit(code=1)
 
-    found_names = [
-        ((j.get("code", {}) or {}).get("schema") or [{}])[0].get(
-            "name", j.get("name", "")
-        )
-        for j in judges
-    ]
+    found_names = [client.evaluator_schema_name(j) for j in judges]
     exp_name = experiment_name or _auto_experiment_name(dataset_name)
     plan = {
         "project": project,
