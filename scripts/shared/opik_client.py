@@ -243,7 +243,15 @@ class OpikClient:
         metadata: dict | None = None,
         tags: list[str] | None = None,
     ) -> None:
-        """Pre-mint `experiment_id` so bulk item endpoint can target it. Body is 201-no-content."""
+        """Pre-mint `experiment_id` so bulk item endpoint can target it. Body is 201-no-content.
+
+        Opik 2.x `Experiment_Write` has no top-level `description` field —
+        we fold it into `metadata.description` so it survives and is
+        searchable from the experiment card.
+        """
+        merged_meta: dict = dict(metadata or {})
+        if description:
+            merged_meta["description"] = description
         body: dict = {
             "id": experiment_id,
             "dataset_name": dataset_name,
@@ -252,12 +260,10 @@ class OpikClient:
             "status": status,
             "project_id": project_id,
         }
-        if description:
-            body["description"] = description
         if optimization_id:
             body["optimization_id"] = optimization_id
-        if metadata:
-            body["metadata"] = metadata
+        if merged_meta:
+            body["metadata"] = merged_meta
         if tags:
             body["tags"] = tags
         self._request("POST", "/v1/private/experiments", json=body)
@@ -319,8 +325,19 @@ class OpikClient:
         name: str | None = None,
         description: str | None = None,
         tags: list[str] | None = None,
+        metadata: dict | None = None,
     ) -> str:
-        """Returns the optimization id. If optimization_id omitted, server assigns one."""
+        """Returns the optimization id. If optimization_id omitted, server assigns one.
+
+        Opik 2.x `Optimization_Write` has neither a top-level `description`
+        nor `tags`. Both are folded into `metadata.description` and
+        `metadata.tags` so they survive on the optimization card.
+        """
+        merged_meta: dict = dict(metadata or {})
+        if description:
+            merged_meta["description"] = description
+        if tags:
+            merged_meta["tags"] = tags
         body: dict = {
             "dataset_name": dataset_name,
             "objective_name": objective_name,
@@ -330,9 +347,7 @@ class OpikClient:
             body["id"] = optimization_id
         if name:
             body["name"] = name
-        if description:
-            body["description"] = description
-        if tags:
-            body["tags"] = tags
+        if merged_meta:
+            body["metadata"] = merged_meta
         self._request("PUT", "/v1/private/optimizations", json=body)
         return optimization_id or body.get("id", "")
