@@ -1,4 +1,5 @@
 ---
+name: scope-agent
 description: Extract the agent's promise inventory and write baseline regression scenarios. Produces `.edd/promises.md` (one line per skill/tool/promise) and `regressions.txt` (5–8 baseline scenarios at aggression 1). Idempotent — skip if both exist and agent source is unchanged. Invoke as `edd:scope-agent` or when the user says "scope the agent", "extract promises", "build regressions".
 ---
 

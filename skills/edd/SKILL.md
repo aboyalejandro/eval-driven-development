@@ -1,4 +1,5 @@
 ---
+name: edd
 description: Eval-Driven Development router — picks the mode and dispatches. Asks two questions (mode 1/2/3, aggression 1/2/3), writes `.edd/session.json`, hands off to one of the phase skills. Use this when the user wants an eval workflow but hasn't named a phase. Skill-specific work belongs in `edd:scope-agent`, `edd:scope-evals`, `edd:run`, `edd:experiment`, or `edd:optimisation`.
 ---
 

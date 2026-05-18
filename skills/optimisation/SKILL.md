@@ -1,5 +1,6 @@
 ---
-description: Iterative prompt fix on one judge — baseline vs post-fix on a shared Opik optimization timeline. Use after `edd:run` / `edd:experiment` has surfaced a persistent failure on a single dimension. Two paths: 3A manual comparison (any HTTP agent) or 3B studio via `opik_optimizer.MetaPromptOptimizer` (direct-LLM prompts only). Invoke as `edd:optimisation` or when the user says "optimize the prompt", "iterate on this judge", "edd mode 3". For *building the durable scoreboard*, see `edd:experiment`.
+name: optimisation
+description: Iterative prompt fix on one judge — baseline vs post-fix on a shared Opik optimization timeline. Use after `edd:run` / `edd:experiment` has surfaced a persistent failure on a single dimension. Two paths — 3A manual comparison (any HTTP agent) or 3B studio via `opik_optimizer.MetaPromptOptimizer` (direct-LLM prompts only). Invoke as `edd:optimisation` or when the user says "optimize the prompt", "iterate on this judge", "edd mode 3". For *building the durable scoreboard*, see `edd:experiment`.
 ---
 
 # edd:optimisation — targeted prompt optimization
@@ -52,15 +53,20 @@ Verify the change moved the needle on a few scenarios before committing to a ful
 edd-build \
   --project <project> \
   --dataset-name <project>-<topic>-v<N> \
+  --description "<dataset summary>" \
   --branch-tag sim-$(git rev-parse --abbrev-ref HEAD)
 
 edd-run \
   --project <project> \
   --dataset-name <project>-<topic>-v<N> \
   --evaluator "<target-evaluator>" \
+  --description "post-fix variant — <what you changed>" \
   --optimization-name <topic>-baseline-vs-fix \
+  --optimization-description "<reused on first upsert of the optimization>" \
   --experiment-name <topic>-post-fix
 ```
+
+Both `--description` flags are required by their respective CLIs. `--optimization-description` lands once (on the first upsert of the optimization) and is reused for subsequent variants on the same timeline.
 
 Same dataset, same evaluator, same optimization → post-fix appears as a new point on the timeline alongside baseline.
 

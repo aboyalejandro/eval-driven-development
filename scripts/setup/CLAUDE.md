@@ -22,7 +22,12 @@ Verifies Opik connectivity (`OPIK_URL` + `OPIK_API_KEY`) and that `AGENT_ENDPOIN
 - `--wait` + `--evaluators "<names>"`: emit, trigger judges immediately, poll, print table. **Only safe when judges can read raw trace shape — no enrichment step.**
 - Without `--wait`: emit + tag, return immediately. Caller is expected to run enrichment then `edd score`.
 
-Every emitted trace gets tagged `sim-<branch>` (current git branch). That tag is the join key for [`simulation/build_dataset.py`](../simulation/CLAUDE.md).
+**Branch guard.** `edd run` refuses to emit traces when the current git branch is `main` / `master` / detached — prevents accidental `sim-main` tagging. Override with `--allow-main` if legitimately needed.
+
+**Tags applied to every emitted trace** (via `batch_update_traces`):
+- `run-<8-char run id>` — uniquely identifies one `edd run` invocation
+- `sim-<branch>` — join key for `edd-build`
+- `topic-<topic>`, `mode-<n>`, `aggression-<n>` — propagated from `.edd/session.json` when present (see [`shared/session.py`](../shared/CLAUDE.md))
 
 ### `edd score --since <minutes>`
 Triggers `--evaluators` on every trace tagged `sim-<branch>` within the time window, polls until scores land or timeout, prints the per-dimension table via `results.py`.

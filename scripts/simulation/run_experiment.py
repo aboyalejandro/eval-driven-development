@@ -11,6 +11,7 @@ import typer
 from rich.console import Console
 
 from shared.opik_client import OpikClient
+from shared.session import branch_tag_warning, session_tags
 from shared.settings import settings
 from setup.results import _latest_per_judge
 
@@ -71,6 +72,8 @@ def _resolve_optimization(
     dataset_id: str,
     dataset_name: str,
     objective: str,
+    description: str | None = None,
+    tags: list[str] | None = None,
 ) -> str:
     """Find or create an optimization group, returning its id."""
     existing = client.find_optimization(name, dataset_id)
@@ -83,6 +86,8 @@ def _resolve_optimization(
         status="running",
         optimization_id=opt_id,
         name=name,
+        description=description,
+        tags=tags,
     )
     return opt_id
 
@@ -107,10 +112,25 @@ def main(
         help="Trace tag — used for experiment metadata and dataset-item filtering.",
     ),
     experiment_name: str | None = typer.Option(None, "--experiment-name"),
+    description: str = typer.Option(
+        ...,
+        "--description",
+        help="Required. Short summary of this experiment (hypothesis + what changed).",
+    ),
     optimization_name: str | None = typer.Option(
         None,
         "--optimization-name",
         help="If set, experiment is grouped under this optimization timeline.",
+    ),
+    optimization_description: str | None = typer.Option(
+        None,
+        "--optimization-description",
+        help="Description applied when the optimization is first created. Reused for baseline + later variants.",
+    ),
+    extra_tag: list[str] = typer.Option(
+        [],
+        "--tag",
+        help="Extra tag for experiment + optimization. Repeatable. Stacks on top of branch-tag + session tags.",
     ),
     score_timeout: int = typer.Option(
         300, "--score-timeout", help="Seconds to wait for judge to finish per batch."
@@ -118,8 +138,15 @@ def main(
     finalize_optimization: bool = typer.Option(
         False, "--finalize-optimization", help="Mark grouping optimization completed."
     ),
+    allow_main: bool = typer.Option(
+        False,
+        "--allow-main",
+        help="Silence the warning when --branch-tag references main/master.",
+    ),
     dry_run: bool = typer.Option(False, "--dry-run"),
 ):
+    if not allow_main and (w := branch_tag_warning(branch_tag)):
+        console.print(f"[yellow]{w}[/yellow]")
     client = OpikClient()
 
     dataset_id = client.get_dataset_id(dataset_name)
@@ -164,10 +191,17 @@ def main(
     if dry_run:
         return
 
+    shared_tags = [branch_tag, *session_tags(), *extra_tag]
     opt_id = None
     if optimization_name:
         opt_id = _resolve_optimization(
-            client, optimization_name, dataset_id, dataset_name, found_names[0]
+            client,
+            optimization_name,
+            dataset_id,
+            dataset_name,
+            found_names[0],
+            description=optimization_description,
+            tags=shared_tags,
         )
         console.print(f"optimization id={opt_id}")
 
@@ -205,9 +239,10 @@ def main(
         name=exp_name,
         experiment_id=exp_id,
         project_id=project_id,
+        description=description,
         optimization_id=opt_id,
         metadata=metadata,
-        tags=[branch_tag],
+        tags=shared_tags,
     )
     bulk_items = [
         {

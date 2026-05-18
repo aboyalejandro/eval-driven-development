@@ -236,6 +236,7 @@ class OpikClient:
         name: str,
         experiment_id: str,
         project_id: str,
+        description: str | None = None,
         optimization_id: str | None = None,
         type_: str = "regular",
         status: str = "running",
@@ -251,6 +252,8 @@ class OpikClient:
             "status": status,
             "project_id": project_id,
         }
+        if description:
+            body["description"] = description
         if optimization_id:
             body["optimization_id"] = optimization_id
         if metadata:
@@ -314,6 +317,8 @@ class OpikClient:
         status: str = "running",
         optimization_id: str | None = None,
         name: str | None = None,
+        description: str | None = None,
+        tags: list[str] | None = None,
     ) -> str:
         """Returns the optimization id. If optimization_id omitted, server assigns one."""
         body: dict = {
@@ -325,5 +330,9 @@ class OpikClient:
             body["id"] = optimization_id
         if name:
             body["name"] = name
+        if description:
+            body["description"] = description
+        if tags:
+            body["tags"] = tags
         self._request("PUT", "/v1/private/optimizations", json=body)
         return optimization_id or body.get("id", "")

@@ -1,4 +1,5 @@
 ---
+name: experiment
 description: Promote sim-tagged traces into a durable Opik dataset + experiment with a UI scorecard. Outer loop of the eval pipeline. Use when the score must outlive the branch — cross-time comparison, baseline for an optimizer, reviewer handoff. Invoke as `edd:experiment` or when the user says "build dataset", "run experiment", "scoreboard in Opik UI", "outer loop". For *targeted prompt iteration on one judge*, see `edd:optimisation`.
 ---
 
@@ -47,15 +48,19 @@ If the last `edd:run` was less than ~6h ago you can reuse those traces. Otherwis
 edd-build \
   --project <opik-project> \
   --dataset-name <dataset_name> \
+  --description "<one-line summary — topic + hypothesis>" \
   --branch-tag sim-$(git rev-parse --abbrev-ref HEAD) \
   --from "$(date -u -v-6H +%Y-%m-%dT%H:%M:%SZ)" \
+  [--tag <extra-tag>] \
   [--extractor _local.my_extractor:extract] \
   --dry-run
 ```
 
-`--dry-run` first — it prints the planned items without writing. Verify item count and shape, then re-run without `--dry-run`.
+`--description` is required (Opik dataset card uses it). `--dry-run` first — verify item count and shape, then re-run without it.
 
 Default extractor reads `metadata.user_message` + `metadata.assistant_response`. Supply `--extractor module:function` if your runtime emits trace paths that differ.
+
+**Tags auto-applied:** `--branch-tag` + `topic` / `mode` / `aggression` from `.edd/session.json` + any `--tag` you pass. Branch-tag warning prints if it references `main`/`master` — pass `--allow-main` to silence.
 
 ## Phase E — Run the experiment
 
@@ -64,11 +69,16 @@ edd-run \
   --project <opik-project> \
   --dataset-name <dataset_name> \
   --evaluator "<schema-name-a>,<schema-name-b>" \
+  --description "<hypothesis — what changed and what we expect>" \
   --branch-tag sim-$(git rev-parse --abbrev-ref HEAD) \
   [--optimization-name <topic>-baseline-vs-v2] \
+  [--optimization-description "<reused on first upsert of this optimization>"] \
+  [--tag <extra-tag>] \
   [--score-timeout 300] \
   [--dry-run]
 ```
+
+`--description` is required and surfaces on the Opik experiment card. `--optimization-description` is recorded when the optimization is first created and reused for later variants on the same timeline.
 
 This:
 1. Triggers each evaluator on every linked trace
