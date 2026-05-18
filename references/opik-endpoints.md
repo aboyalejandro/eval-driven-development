@@ -98,14 +98,33 @@ and `MetaPromptOptimizer.optimize_prompt()` rather than constructing `studio_con
 > `trace_ids`; 2.x uses `POST /manual-evaluation/traces` with `entity_ids`
 > + `entity_type`. The old path returns 405.
 
-Triggered scores write to **trace-level** `feedback_scores` (embedded on
-the trace, not a separate endpoint in 2.x). They do *not* auto-propagate
-to experiment items — `edd-run` polls them off the traces and
-copies them onto the items so both the trace and experiment item carry the scores.
-
 If scores never appear, fetch `/automations/evaluators/{id}/logs` — the
 most common cause is "API key not configured for LLM" when the judge
 model's provider isn't credentialed in the workspace.
+
+## Score storage — two planes, no auto-sync
+
+Opik stores feedback scores in two unsynced places:
+
+| Plane | Where it lives | Visible in | Written by |
+|---|---|---|---|
+| **Trace plane** | `trace.feedback_scores[]` (embedded on the trace) | Traces table, trace detail view | `POST /manual-evaluation/traces`; online_scoring rules |
+| **Experiment plane** | `experiment_item.feedback_scores[]` | Experiment Compare UI, scorecard | `PUT /experiments/items/bulk` body |
+
+Writing one **never** updates the other. `edd-run` works around this by
+polling scores off the trace (`get_trace_scores`) and copying them into
+the bulk items payload — without that copy, the Compare UI is empty
+even though the trace is scored.
+
+**Consequences:**
+
+- `edd-inspect` reads experiment-plane scores only. Judges firing on a
+  trace *after* `edd-run` completes never reach the experiment item —
+  re-run `edd-run` (or extend the client with a reconcile pass) to re-sync.
+- Annotations don't propagate. A reviewer's note in the Compare UI is
+  invisible from the trace, and vice versa.
+- For optimisation comparisons, trust experiment-plane only. Trace-plane
+  scores can include stale runs from before the experiment was frozen.
 
 ## Reference URL patterns
 

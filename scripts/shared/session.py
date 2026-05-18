@@ -49,6 +49,11 @@ def assert_active_branch(allow_main: bool = False) -> str:
     return branch
 
 
+def session_mode() -> str:
+    """Stripped string value of session.json `mode` key, or empty string."""
+    return str(load_session().get("mode", "")).strip()
+
+
 def session_tags() -> list[str]:
     """Tags derived from `.edd/session.json` — propagated to dataset / experiment / optimization."""
     s = load_session()

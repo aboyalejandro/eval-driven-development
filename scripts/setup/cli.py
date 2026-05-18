@@ -16,7 +16,7 @@ from rich.console import Console
 from setup.agent import run_scenario
 from setup.results import poll_scores, print_results
 from shared.opik_client import OpikClient
-from shared.session import assert_active_branch, session_tags
+from shared.session import assert_active_branch, session_mode, session_tags
 from shared.settings import settings
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -65,6 +65,14 @@ def run(
 ):
     """Run a message or a scenarios file."""
     branch = assert_active_branch(allow_main=allow_main)
+    mode = session_mode()
+    if wait and mode in {"2", "3"}:
+        raise typer.BadParameter(
+            f"--wait fires judges at sim time, but session mode is '{mode}' "
+            "(experiment/optimisation re-score later at experiment time). "
+            "Firing now duplicates LLM-judge spend on the same traces. "
+            "Drop --wait, or change `mode` in .edd/session.json."
+        )
     scenarios = _load_scenarios(message_or_file)
     flag_targets = {n.strip() for n in evaluators.split(",")} if evaluators else set()
     asyncio.run(_run(scenarios, project, wait, timeout, flag_targets, branch))

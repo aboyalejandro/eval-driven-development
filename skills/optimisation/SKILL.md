@@ -7,6 +7,8 @@ description: Iterative prompt fix on one judge — baseline vs post-fix on a sha
 
 Mode 3 of the eval pipeline. Single evaluator, single prompt section, measurable delta on an Opik optimization timeline.
 
+> The Opik `Optimization` entity is a generic timeline-grouping primitive — manual variant comparison (3A) and `opik_optimizer.MetaPromptOptimizer` (3B) write to the same entity. The HRPO/MIPRO loop is one valid producer; manual `--optimization-name` runs are another.
+
 ## Preconditions
 
 - `.edd/session.json` has `project`, `branch_tag`, `topic`
