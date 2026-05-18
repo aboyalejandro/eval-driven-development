@@ -199,7 +199,7 @@ def main(
 
     metadata: dict[str, Any] = {
         "evaluators": found_names,
-        "source": "eval-driven-development",
+        "source": "edd",
         "branch": branch_tag,
     }
     if opt_id:

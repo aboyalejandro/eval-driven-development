@@ -1,0 +1,113 @@
+---
+description: Outer loop of the eval pipeline — build an Opik dataset from sim-tagged traces, run an experiment under an evaluator, inspect failures. Mints `<project>-<topic>-v<N>` names at runtime. Use when the score must outlive the branch (cross-time comparison, baseline for an optimizer, reviewer handoff). Invoke as `edd:experiment` or when the user says "build dataset", "run experiment", "outer loop", "edd ship".
+---
+
+# edd:experiment — dataset → experiment → inspect
+
+Mode 2 Phase 2 of the eval pipeline. Promotes the inner-loop score into a durable artifact.
+
+## Preconditions
+
+- `.edd/session.json` has `project` and `branch_tag` (`sim-<git-branch>`)
+- `.edd/evaluator-plan.md` exists ([`edd:scope-evals`](../scope-evals/SKILL.md))
+- Inner loop is **green** ([`edd:run`](../run/SKILL.md)) — judges fire cleanly on a few traces
+- Sim batch tagged in the last few hours (re-run `edd:run` if stale)
+- venv active
+
+## When to invoke
+
+- comparing two prompt variants on the same inputs
+- iterating across days and needing a timeline view
+- producing a baseline a later optimizer loop will run against
+- handing the score off to a reviewer who wasn't in the inner loop
+
+## Phase A — Pick the evaluator
+
+Read `.edd/evaluator-plan.md`. Pick the single dimension that the diff most directly exercises (you can add more evaluators to the experiment run later — start with one). Consult [references/evaluator-selection.md](../../references/evaluator-selection.md) if uncertain.
+
+The chosen evaluator's schema **name** (not id) flows through every later command.
+
+## Phase B — Design the dataset
+
+Follow [references/dataset-design.md](../../references/dataset-design.md). Decide:
+
+- naming: `<project>-<topic>-v<N>` — read `project` + `topic` from session, start at `v1`, bump when the item shape changes
+- coverage mix — every promise represented; aggression-1 + 2 mix unless the experiment specifically targets adversarial
+- whether metadata propagates through the trace (rare — usually trace input/output is enough)
+
+Write `dataset_name` to `.edd/session.json`.
+
+## Phase C — Tag a sim batch
+
+If the last `edd:run` was less than ~6h ago you can reuse those traces. Otherwise re-run [`edd:run`](../run/SKILL.md) with full enrichment — judges in the experiment read the same paths they used in the inner loop.
+
+## Phase D — Build the dataset
+
+```bash
+edd-build \
+  --project <opik-project> \
+  --dataset-name <dataset_name> \
+  --branch-tag sim-$(git rev-parse --abbrev-ref HEAD) \
+  --from "$(date -u -v-6H +%Y-%m-%dT%H:%M:%SZ)" \
+  [--extractor _local.my_extractor:extract] \
+  --dry-run
+```
+
+`--dry-run` first — it prints the planned items without writing. Verify item count and shape, then re-run without `--dry-run`.
+
+Default extractor reads `metadata.user_message` + `metadata.assistant_response`. Supply `--extractor module:function` if your runtime emits trace paths that differ.
+
+## Phase E — Run the experiment
+
+```bash
+edd-run \
+  --project <opik-project> \
+  --dataset-name <dataset_name> \
+  --evaluator "<schema-name-a>,<schema-name-b>" \
+  --branch-tag sim-$(git rev-parse --abbrev-ref HEAD) \
+  [--optimization-name <topic>-baseline-vs-v2] \
+  [--score-timeout 300] \
+  [--dry-run]
+```
+
+This:
+1. Triggers each evaluator on every linked trace
+2. Polls scores until done or timeout
+3. Creates the experiment with model + branch + evaluator metadata
+4. Copies scores onto experiment items
+
+Wrap under `--optimization-name` when you want to compare runs on a shared timeline — see [references/experiment-grouping.md](../../references/experiment-grouping.md). Write `experiment_name` and `optimization_name` to `.edd/session.json`.
+
+## Phase F — Inspect + iterate
+
+```bash
+edd-inspect \
+  --experiment-name <experiment_name> \
+  [--score-threshold 0.5] \
+  [--evaluator "<Schema Name>"] \
+  [--out-jsonl /tmp/exp.jsonl]
+```
+
+Prints a per-evaluator digest + every failure below threshold with trace links.
+
+Classify failures via [references/failure-modes.md](../../references/failure-modes.md):
+
+| Class | Action |
+|---|---|
+| prompt issue | fix prompt/skill/tool, re-run Phase E (same dataset, same optimization → new experiment lands on the timeline) |
+| dataset issue | patch scenarios, rebuild dataset (Phase D), **new version** — bump `v<N>` |
+| evaluator issue | back to [`edd:scope-evals`](../scope-evals/SKILL.md), recalibrate, re-run Phase E |
+| flaky / model-bound | tag and skip |
+
+**Two prompt iterations on the same red judge = stop tweaking the prompt, widen the search.** See [references/failure-modes.md](../../references/failure-modes.md) for prompt-iteration vs judge-noise distinction.
+
+## Anti-patterns
+
+- Rewriting the dataset in place — new shape = **new version**. Cross-version comparisons are noise.
+- Running an experiment without an evaluator — "I want a scoreboard" is not an evaluator; pick the dimension first.
+- Optimization timelines spanning unrelated topics — one optimization per topic.
+- Skipping `--dry-run` — bad extractor + real write = polluted dataset.
+
+## Next
+
+→ Optimization timeline shows persistent failures on one dimension → [`edd:optimisation`](../optimisation/SKILL.md).

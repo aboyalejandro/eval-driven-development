@@ -2,6 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Sitemap
+
+Distributed CLAUDE.md docs — load the one closest to where you're working:
+
+| Area | Doc | What lives there |
+|---|---|---|
+| Skills (workflow entry) | [`skills/CLAUDE.md`](skills/CLAUDE.md) | Sub-skill index + DAG: `edd` router → `scope-agent` → `scope-evals` → `run` → `experiment` → `optimisation` |
+| Framework engine | [`scripts/CLAUDE.md`](scripts/CLAUDE.md) | Package layout, console scripts → modules, install steps |
+| Inner loop (CLI) | [`scripts/setup/CLAUDE.md`](scripts/setup/CLAUDE.md) | `edd run` / `edd score` / `edd check`, trace tagging, custom adapters |
+| Outer loop (CLI) | [`scripts/simulation/CLAUDE.md`](scripts/simulation/CLAUDE.md) | `edd-build` / `edd-run` / `edd-inspect`, dataset naming, optimization grouping |
+| Opik REST + settings | [`scripts/shared/CLAUDE.md`](scripts/shared/CLAUDE.md) | `OpikClient` surface, env vars, REST coupling caveat |
+| Decision guides | [`references/CLAUDE.md`](references/CLAUDE.md) | Index of `references/*.md` and when to load each |
+
 ## Layout
 
 ```
@@ -9,12 +22,21 @@ PREREQUISITES.md         ← read first — integration contract + Opik REST cav
 .env.example, .env       ← project config (.env gitignored)
 scenarios.example.txt, scenarios.txt    ← per-agent scenarios (.txt gitignored)
 regressions.example.txt, regressions.txt ← per-agent baselines (.txt gitignored)
+.edd/                    ← session state shared across edd:* sub-skills (gitignored)
+.claude-plugin/plugin.json
+skills/                  ← workflow entry points (split per phase)
+  edd/                     ← router — asks mode + aggression, dispatches
+  scope-agent/             ← extract promise inventory → regressions.txt
+  scope-evals/             ← derive judge dimensions, create gaps in Opik
+  run/                     ← Mode 1 + Mode 2 Phase 1 (inner loop)
+  experiment/              ← Mode 2 Phase 2 (dataset + experiment + inspect)
+  optimisation/            ← Mode 3 (3A manual + 3B studio)
 scripts/                 ← framework engine
-  setup/                   ← setup phase: run scenarios, tag traces, score (edd)
-  simulation/              ← simulation phase: dataset, experiment, inspect (edd-build / edd-run / edd-inspect)
+  setup/                   ← setup phase: edd CLI
+  simulation/              ← simulation phase: edd-build / edd-run / edd-inspect
   shared/                  ← REST wrapper (opik_client.py)
   pyproject.toml
-references/ ← decision guides
+references/ ← decision guides (loaded on demand)
 ```
 
 ## Setup

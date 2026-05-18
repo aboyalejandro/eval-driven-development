@@ -1,0 +1,144 @@
+---
+description: Mode 3 — targeted optimization against one evaluator. Branches on agent type: 3A manual comparison (any HTTP agent, baseline vs post-fix on a shared optimization timeline) or 3B studio (`opik_optimizer.MetaPromptOptimizer`, direct-LLM prompts only). Use after `edd:run`/`edd:experiment` surfaces a persistent failure on one dimension. Invoke as `edd:optimisation` or when the user says "optimize the prompt", "run optimization", "edd mode 3".
+---
+
+# edd:optimisation — targeted prompt optimization
+
+Mode 3 of the eval pipeline. Single evaluator, single prompt section, measurable delta on an Opik optimization timeline.
+
+## Preconditions
+
+- `.edd/session.json` has `project`, `branch_tag`, `topic`
+- One target evaluator picked — should be the dimension that's persistently red across [`edd:run`](../run/SKILL.md) or [`edd:experiment`](../experiment/SKILL.md)
+- Identified prompt section to mutate (skill file, system prompt block, tool description)
+- venv active
+
+## Branch — pick 3A or 3B
+
+| Agent shape | Path |
+|---|---|
+| HTTP service (Agno, multi-skill router, anything with a skill loader) | **3A — Manual comparison** |
+| Direct LLM call (single prompt → completion, no runtime skill loader) | **3B — Studio optimization** |
+
+**If unsure, use 3A.** 3B has a sharp limitation for HTTP agents — see warning at bottom.
+
+---
+
+## 3A — Manual comparison (any HTTP agent)
+
+Baseline run already exists (from prior [`edd:experiment`](../experiment/SKILL.md)). Mutate the prompt, re-run, compare on a shared optimization timeline.
+
+### Step 1 — Pin baseline
+
+Confirm a baseline experiment exists under an `--optimization-name`. If not, run [`edd:experiment`](../experiment/SKILL.md) first with `--optimization-name <topic>-baseline-vs-fix` so the post-fix run lands on the same timeline.
+
+### Step 2 — Change the prompt
+
+One focused change in the agent repo — the prompt section that the target evaluator scores. Don't co-mutate other surfaces; you lose attribution.
+
+### Step 3 — Inner loop on target evaluator
+
+```bash
+edd run scenarios.txt
+python _local/enrich_traces_<sdk>.py --since-minutes 5
+edd score --since 10 --evaluators "<target-evaluator>"
+```
+
+Verify the change moved the needle on a few scenarios before committing to a full experiment.
+
+### Step 4 — Post-fix experiment under shared optimization
+
+```bash
+edd-build \
+  --project <project> \
+  --dataset-name <project>-<topic>-v<N> \
+  --branch-tag sim-$(git rev-parse --abbrev-ref HEAD)
+
+edd-run \
+  --project <project> \
+  --dataset-name <project>-<topic>-v<N> \
+  --evaluator "<target-evaluator>" \
+  --optimization-name <topic>-baseline-vs-fix \
+  --experiment-name <topic>-post-fix
+```
+
+Same dataset, same evaluator, same optimization → post-fix appears as a new point on the timeline alongside baseline.
+
+### Step 5 — Finalize + inspect delta
+
+```bash
+edd-run ... --finalize-optimization
+edd-inspect --experiment-name <topic>-post-fix
+```
+
+`--finalize-optimization` closes the optimization (no further runs land on it). Skip if you plan more variants on the same timeline.
+
+Compare baseline vs post-fix in the Opik optimization UI. Decision rule:
+- post-fix > baseline by ≥ 0.1 on the target evaluator, no regression on other evaluators → **keep**
+- post-fix ≤ baseline OR regression elsewhere → **roll back**, widen the search
+
+---
+
+## 3B — Studio optimization (direct-LLM prompts only)
+
+Uses `opik_optimizer.MetaPromptOptimizer` to automatically generate improved prompt variants and score them with a custom metric.
+
+### Install
+
+```bash
+pip install opik-optimizer   # not in core deps
+```
+
+### Step 1 — Write `_local/run_optimization.py`
+
+```python
+from opik_optimizer import MetaPromptOptimizer
+from opik import Opik
+
+opik = Opik()
+dataset = opik.get_dataset("<project>-<topic>-v<N>")
+
+def metric(dataset_item, llm_output) -> float:
+    # 1.0 if llm_output satisfies the target promise, else 0.0
+    ...
+
+optimizer = MetaPromptOptimizer(
+    prompt="<the skill instructions or system prompt section to optimize>",
+    metric=metric,
+    dataset=dataset,
+    optimize_prompts="system",   # only the system prompt mutates
+    model="anthropic/claude-sonnet-4-6",
+)
+
+result = optimizer.optimize(trials=3, samples=5)
+print(result)
+```
+
+### Step 2 — Run
+
+```bash
+python _local/run_optimization.py --trials 3 --samples 5
+```
+
+The optimizer generates variants, scores each via `metric`, and posts the trial timeline to the Opik optimization studio.
+
+### Limitation — read this before using 3B
+
+The optimizer calls the LLM **directly**, bypassing your agent's runtime. If your agent loads skills dynamically (Agno) or has a tool-calling loop, the optimizer's baseline may score 1.0 even when the real agent scores 0 — the skill instructions are correct in isolation but the runtime applies them differently.
+
+**Symptom:** optimizer baseline ≫ inner-loop baseline on the same scenarios.
+**Fix:** abandon 3B, fall back to 3A, investigate the runtime layer.
+
+---
+
+## Anti-patterns
+
+- Co-mutating multiple prompt sections in one optimization run — you can't attribute the delta.
+- Running 3B on an HTTP agent without verifying baseline parity with the real runtime.
+- Optimization names spanning unrelated topics — keeps the timeline legible.
+- Skipping the inner loop pre-check — if `edd:run` doesn't show the change moved the needle on 3–5 scenarios, the full experiment will waste compute.
+
+## Next
+
+- Delta accepted → ship the prompt change, run [`edd:run`](../run/SKILL.md) one more time to confirm no regression on `regressions.txt`.
+- Delta rejected → roll back, return to [`edd:scope-evals`](../scope-evals/SKILL.md) (judge may be miscalibrated) or [`edd:scope-agent`](../scope-agent/SKILL.md) (promise may need rephrasing).

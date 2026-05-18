@@ -1,5 +1,5 @@
 [project]
-name = "eval-driven-development"
+name = "edd"
 version = "0.1.0"
 description = "Headless agent eval loop — run scenarios, score with Opik judges"
 requires-python = ">=3.11"
