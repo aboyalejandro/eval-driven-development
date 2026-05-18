@@ -1,5 +1,5 @@
 ---
-description: Mode 3 — targeted optimization against one evaluator. Branches on agent type: 3A manual comparison (any HTTP agent, baseline vs post-fix on a shared optimization timeline) or 3B studio (`opik_optimizer.MetaPromptOptimizer`, direct-LLM prompts only). Use after `edd:run`/`edd:experiment` surfaces a persistent failure on one dimension. Invoke as `edd:optimisation` or when the user says "optimize the prompt", "run optimization", "edd mode 3".
+description: Iterative prompt fix on one judge — baseline vs post-fix on a shared Opik optimization timeline. Use after `edd:run` / `edd:experiment` has surfaced a persistent failure on a single dimension. Two paths: 3A manual comparison (any HTTP agent) or 3B studio via `opik_optimizer.MetaPromptOptimizer` (direct-LLM prompts only). Invoke as `edd:optimisation` or when the user says "optimize the prompt", "iterate on this judge", "edd mode 3". For *building the durable scoreboard*, see `edd:experiment`.
 ---
 
 # edd:optimisation — targeted prompt optimization
@@ -73,9 +73,7 @@ edd-inspect --experiment-name <topic>-post-fix
 
 `--finalize-optimization` closes the optimization (no further runs land on it). Skip if you plan more variants on the same timeline.
 
-Compare baseline vs post-fix in the Opik optimization UI. Decision rule:
-- post-fix > baseline by ≥ 0.1 on the target evaluator, no regression on other evaluators → **keep**
-- post-fix ≤ baseline OR regression elsewhere → **roll back**, widen the search
+Compare baseline vs post-fix in the Opik optimization UI. Decision rule per [stopping rules](../CLAUDE.md#stopping-rules): keep iff post-fix beats baseline by ≥ 0.1 with no regression elsewhere.
 
 ---
 
@@ -133,10 +131,10 @@ The optimizer calls the LLM **directly**, bypassing your agent's runtime. If you
 
 ## Anti-patterns
 
-- Co-mutating multiple prompt sections in one optimization run — you can't attribute the delta.
 - Running 3B on an HTTP agent without verifying baseline parity with the real runtime.
-- Optimization names spanning unrelated topics — keeps the timeline legible.
 - Skipping the inner loop pre-check — if `edd:run` doesn't show the change moved the needle on 3–5 scenarios, the full experiment will waste compute.
+
+See also: [pipeline anti-patterns](../CLAUDE.md#pipeline-anti-patterns) (global, including co-mutating prompt sections and optimization-name span).
 
 ## Next
 

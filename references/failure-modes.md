@@ -1,8 +1,42 @@
 # Failure modes — red judge → likely fix surface
 
-When a judge scores below 0.5, this table maps the symptom to the most common cause and where to look first. Use it to avoid the trap of tweaking the prompt when the real bug is elsewhere.
+When a judge scores below 0.5, this doc tells you (a) whether the red is real, (b) where the cause most likely lives, and (c) when to stop tweaking. Read it *while* staring at a red cell. For the score-table mechanics see [`scoring.md`](scoring.md).
 
-Read this *while* staring at a red cell. Cross-reference with `scoring.md` first to rule out judge bias.
+## Before you fix anything — rule out judge issues
+
+A red cell is not yet a confirmed regression. Three things can make a judge fire incorrectly.
+
+### Judge biases
+
+LLM-as-judge evaluators have systematic biases — three to know:
+
+- **Verbosity bias** — longer responses score higher on relevance/helpfulness even when they're padded. If a format-tightening change makes a relevance score drop, the trace probably got shorter and the judge confused brevity with incompleteness.
+- **Self-preference** — judges score outputs from the same model family higher. If you swap from Claude to GPT and faithfulness drops 0.05 across every trace with no visible response change, it's likely judge bias, not a real regression.
+- **Refusal penalty** — judges sometimes mark legitimate refusals (write-confirmation prompts, "I can't access that data") as failures on helpfulness. Cross-check with the safety/recovery judges before reading too much into a single low score.
+
+When two judges disagree on the same trace (one red, one green on overlapping dimensions), the trace usually tells you which is right.
+
+### Judge non-determinism
+
+LLM-as-judge scores are not fully deterministic, even at `temperature=0`. The same trace, same rubric, same model can flip between runs on edge cases.
+
+- **One red ≠ confirmed failure.** Re-run the same scenarios once before acting. If the red holds across two independent runs, it's real signal.
+- **A flicker (red one run, green the next) is noise**, not a regression. Note it and move on unless it persists across three runs.
+- **Stable reds across two or more runs are actionable** — that's the judge consistently flagging the same behavior.
+- **Deltas are more reliable than absolutes.** If a prompt change moves a judge from 0 to 1 *and holds across two re-runs*, the change worked.
+
+### What the score can't tell you
+
+The score points; the trace explains. Before tweaking the prompt, open the trace and figure out which of these the red actually is:
+
+- **Real prompt regression** — the agent did the wrong thing
+- **Tool failure** — the tool call returned an error or wrong shape; the agent had nothing good to work with
+- **Judge bias** — the judge misread the trace (rare, but real — see above)
+- **Scenario mismatch** — the scenario didn't actually exercise what you thought it did
+
+## Symptom → fix surface
+
+Once you've ruled out judge issues and confirmed the red is real, map the symptom to the most common cause:
 
 The "Evaluator family" column is a descriptor, not a name — your project's evaluators will have agent-specific names derived from `agent-analysis.md`. Match on the symptom, not on the label.
 
@@ -26,7 +60,7 @@ The "Evaluator family" column is a descriptor, not a name — your project's eva
 If none of the above fits, two questions:
 
 1. **Did the right tool calls happen at all?** Open the trace tree. If the tool surface is broken (missing call, error, wrong shape), no prompt fix will repair it.
-2. **Is the judge actually right?** Read the trace and the judge's rubric side-by-side. LLM judges sometimes flag legitimate behavior — see `scoring.md` for known biases.
+2. **Is the judge actually right?** Re-read the judge biases above and check the rubric against the trace.
 
 ## Simulation-only failure modes
 
@@ -51,12 +85,4 @@ If you've tweaked the prompt twice and the same judge stays red, **stop tweaking
 
 Two strikes on a prompt edit is a signal to widen the search, not narrow it further.
 
-**Important distinction — prompt iterations vs. re-runs:**
-
-The "two strikes" rule counts *distinct prompt edits*, not repeat runs of the same trace. LLM judges at `temperature=0` are still non-deterministic — the same trace can flip between runs on rubric-edge cases. Before counting a red as a strike:
-
-1. Re-run the same scenarios once without changing anything.
-2. If the red holds across both independent runs, it's real — count it.
-3. If it flickers (red one run, green the next), it's judge noise — don't count it.
-
-See `scoring.md` for the non-determinism rules of thumb.
+**Important distinction — prompt iterations vs. re-runs.** The "two strikes" rule counts *distinct prompt edits*, not repeat runs of the same trace. Apply the non-determinism rules above before counting a red as a strike: re-run the scenario once unchanged; only count the strike if the red holds across both runs.

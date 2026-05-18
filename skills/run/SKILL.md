@@ -1,5 +1,5 @@
 ---
-description: Run scenarios against the agent and either (Mode 1) read traces inline with no judges, or (Mode 2 Phase 1) score with manual-trigger judges and print the table. Generates `scenarios.txt` at the session aggression level, branches on whether trace enrichment is required, polls scores. Invoke as `edd:run` or when the user says "run scenarios", "score traces", "edd inner loop".
+description: Fire scenarios at the agent and read the score table. Mode 1: read traces inline, no judges. Mode 2 Phase 1: trigger manual-fire judges that `edd:scope-evals` already created, print the per-dimension table. Generates `scenarios.txt` at session aggression level; branches on whether trace enrichment runs between emit and score. Invoke as `edd:run` or when the user says "run scenarios", "score traces", "fire judges", "edd inner loop". For *creating* judges, see `edd:scope-evals`.
 ---
 
 # edd:run — scenarios → traces → scores
@@ -95,8 +95,8 @@ For each red row:
 
 ## Step 4 — Stop condition
 
-- Mode 1: stop after reporting trace findings
-- Mode 2: stop when the table is green OR two prompt iterations on the same red judge — that signals "widen the search", don't keep tweaking the prompt
+- Mode 1: stop after reporting trace findings.
+- Mode 2: stop when the table is green. Otherwise apply the [stopping rules](../CLAUDE.md#stopping-rules).
 
 For most branch-level work, the inner loop is enough. Escalate to [`edd:experiment`](../experiment/SKILL.md) only when you need a durable record across time/people.
 
@@ -105,7 +105,8 @@ For most branch-level work, the inner loop is enough. Escalate to [`edd:experime
 - Picking every judge — irrelevant judges drown signal with neutral 0.5s. Pick the ones the diff exercises.
 - Skipping enrichment when judges read `metadata.*` — judges get 0 because the paths are empty, not because the agent failed.
 - Editing scenarios mid-loop without re-running — last-write wins, prior scores stale.
-- Going to `edd:experiment` while the inner loop is still red — you'll find out the judge is broken at experiment scale.
+
+See also: [pipeline anti-patterns](../CLAUDE.md#pipeline-anti-patterns) (global).
 
 ## Next
 

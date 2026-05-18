@@ -1,12 +1,4 @@
-"""Opik REST wrapper.
-
-Surface kept narrow on purpose — only the endpoints the EDD scripts use:
-- traces: search, batch tag, feedback scores, spans (for run-time model lookup)
-- evaluators: list automation rules, trigger manual run
-- datasets: resolve id, insert items, page items joined with experiment outputs
-- experiments: create (pre-minted id), add items
-- optimizations: find, upsert (group experiments under one timeline)
-"""
+"""Opik REST wrapper — narrow surface, endpoints documented in scripts/shared/CLAUDE.md."""
 
 import logging
 import uuid

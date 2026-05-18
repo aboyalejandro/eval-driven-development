@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
-"""Inspect experiment results — per-evaluator aggregate + failure surface.
-
-Joins dataset items to experiment outputs and feedback scores, prints a
-digest table, and lists items where any judge scored below `--score-threshold`.
-
-    edd-inspect --experiment-id <uuid>
-    edd-inspect --experiment-name <name> --score-threshold 0.5
-"""
+"""edd-inspect — experiment digest + failure surface. See scripts/simulation/CLAUDE.md."""
 
 import json
 from pathlib import Path

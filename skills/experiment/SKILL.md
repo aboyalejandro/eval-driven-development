@@ -1,5 +1,5 @@
 ---
-description: Outer loop of the eval pipeline — build an Opik dataset from sim-tagged traces, run an experiment under an evaluator, inspect failures. Mints `<project>-<topic>-v<N>` names at runtime. Use when the score must outlive the branch (cross-time comparison, baseline for an optimizer, reviewer handoff). Invoke as `edd:experiment` or when the user says "build dataset", "run experiment", "outer loop", "edd ship".
+description: Promote sim-tagged traces into a durable Opik dataset + experiment with a UI scorecard. Outer loop of the eval pipeline. Use when the score must outlive the branch — cross-time comparison, baseline for an optimizer, reviewer handoff. Invoke as `edd:experiment` or when the user says "build dataset", "run experiment", "scoreboard in Opik UI", "outer loop". For *targeted prompt iteration on one judge*, see `edd:optimisation`.
 ---
 
 # edd:experiment — dataset → experiment → inspect
@@ -31,7 +31,7 @@ The chosen evaluator's schema **name** (not id) flows through every later comman
 
 Follow [references/dataset-design.md](../../references/dataset-design.md). Decide:
 
-- naming: `<project>-<topic>-v<N>` — read `project` + `topic` from session, start at `v1`, bump when the item shape changes
+- naming per [conventions](../CLAUDE.md#naming-conventions) — read `project` + `topic` from session, start at `v1`, bump when the item shape changes
 - coverage mix — every promise represented; aggression-1 + 2 mix unless the experiment specifically targets adversarial
 - whether metadata propagates through the trace (rare — usually trace input/output is enough)
 
@@ -99,14 +99,14 @@ Classify failures via [references/failure-modes.md](../../references/failure-mod
 | evaluator issue | back to [`edd:scope-evals`](../scope-evals/SKILL.md), recalibrate, re-run Phase E |
 | flaky / model-bound | tag and skip |
 
-**Two prompt iterations on the same red judge = stop tweaking the prompt, widen the search.** See [references/failure-modes.md](../../references/failure-modes.md) for prompt-iteration vs judge-noise distinction.
+Apply the [stopping rules](../CLAUDE.md#stopping-rules) — two prompt iterations on the same red judge ⇒ widen the search.
 
 ## Anti-patterns
 
-- Rewriting the dataset in place — new shape = **new version**. Cross-version comparisons are noise.
 - Running an experiment without an evaluator — "I want a scoreboard" is not an evaluator; pick the dimension first.
-- Optimization timelines spanning unrelated topics — one optimization per topic.
 - Skipping `--dry-run` — bad extractor + real write = polluted dataset.
+
+See also: [pipeline anti-patterns](../CLAUDE.md#pipeline-anti-patterns) (global rules, including dataset rewrite-in-place and optimization-name span).
 
 ## Next
 

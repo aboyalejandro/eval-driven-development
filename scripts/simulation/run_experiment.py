@@ -1,24 +1,5 @@
 #!/usr/bin/env python3
-"""Run an Opik experiment on top of an existing dataset.
-
-The dataset already carries items linked back to their source traces (built
-via `edd-build`). This script triggers a chosen evaluator on those
-traces, polls until scores land, then creates an experiment so the score
-table is visible in the Opik UI and comparable across runs.
-
-Optional: wrap multiple experiments under an Optimization (same
-`--optimization-name`) to get a single timeline view of prompt iterations.
-
-    edd-run \
-        --project my-project \
-        --dataset-name edd-recovery-v1 \
-        --evaluator "recovery,output-format" \
-        --branch-tag sim-feat/recovery \
-        [--experiment-name recovery-pre-merge] \
-        [--optimization-name recovery-baseline-vs-v2] \
-        [--score-timeout 300] \
-        [--dry-run]
-"""
+"""edd-run — dataset → experiment, optionally under an optimization. See scripts/simulation/CLAUDE.md."""
 
 import json
 import time
@@ -71,7 +52,9 @@ def _poll_scores(
         scores = {tid: _latest_per_judge(v) for tid, v in raw.items()}
         if triggered_after:
             landed = {
-                s.get("name") for tid in trace_ids for s in scores[tid]
+                s.get("name")
+                for tid in trace_ids
+                for s in scores[tid]
                 if s.get("created_at", "") >= triggered_after
             }
         else:
@@ -162,7 +145,9 @@ def main(
         raise typer.Exit(code=1)
 
     found_names = [
-        ((j.get("code", {}) or {}).get("schema") or [{}])[0].get("name", j.get("name", ""))
+        ((j.get("code", {}) or {}).get("schema") or [{}])[0].get(
+            "name", j.get("name", "")
+        )
         for j in judges
     ]
     exp_name = experiment_name or _auto_experiment_name(dataset_name)
@@ -190,9 +175,12 @@ def main(
     client.trigger_evaluation(project_id, trace_ids, [j["id"] for j in judges])
     console.print(f"triggered {len(judges)} judges on {len(trace_ids)} traces")
 
-    scores_by_trace = _poll_scores(client, trace_ids, set(found_names), score_timeout, triggered_after)
+    scores_by_trace = _poll_scores(
+        client, trace_ids, set(found_names), score_timeout, triggered_after
+    )
     landed = sum(
-        1 for tid in trace_ids
+        1
+        for tid in trace_ids
         if any(s.get("name") in found_names for s in scores_by_trace.get(tid, []))
     )
     console.print(f"scored: {landed}/{len(trace_ids)}")

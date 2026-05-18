@@ -1,24 +1,5 @@
 #!/usr/bin/env python3
-"""Build an Opik dataset from sim traces tagged by `edd run`.
-
-The setup CLI tags every trace it emits with `sim-<branch>`. This script picks
-those traces out of a project, extracts an item per trace, and upserts them
-into a named dataset. The dataset is the durable artifact every later
-experiment scores against.
-
-Default extractor reads `input.user_message` + `output.assistant_response`
-off the trace. Replace it via `--extractor module:function` for runtimes
-that shape their spans differently — the callable receives the raw trace
-dict and returns the item dict (or `None` to skip).
-
-    edd-build \
-        --project my-project \
-        --dataset-name edd-recovery-v1 \
-        --branch-tag sim-feat/recovery \
-        --from "2026-05-14T00:00:00Z" \
-        [--extractor my_pkg.extractors:recovery] \
-        [--dry-run]
-"""
+"""edd-build — sim traces → Opik dataset. See scripts/simulation/CLAUDE.md."""
 
 import importlib
 import json
