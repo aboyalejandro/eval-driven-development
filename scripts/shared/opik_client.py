@@ -255,7 +255,6 @@ class OpikClient:
         experiment_id: str,
         project_id: str,
         description: str | None = None,
-        optimization_id: str | None = None,
         type_: str = "regular",
         status: str = "running",
         metadata: dict | None = None,
@@ -278,8 +277,6 @@ class OpikClient:
             "status": status,
             "project_id": project_id,
         }
-        if optimization_id:
-            body["optimization_id"] = optimization_id
         if merged_meta:
             body["metadata"] = merged_meta
         if tags:
@@ -319,53 +316,3 @@ class OpikClient:
             if e["name"] == name:
                 return e
         return None
-
-    # --- optimizations ---
-
-    def find_optimization(self, name: str, dataset_id: str) -> dict | None:
-        """Return an optimization matching name + dataset_id, or None."""
-        data = self._request(
-            "GET",
-            "/v1/private/optimizations",
-            params={"name": name, "dataset_id": dataset_id, "size": 50},
-        )
-        for o in data.get("content", []):
-            if o["name"] == name:
-                return o
-        return None
-
-    def upsert_optimization(
-        self,
-        dataset_name: str,
-        objective_name: str,
-        status: str = "running",
-        optimization_id: str | None = None,
-        name: str | None = None,
-        description: str | None = None,
-        tags: list[str] | None = None,
-        metadata: dict | None = None,
-    ) -> str:
-        """Returns the optimization id. If optimization_id omitted, server assigns one.
-
-        Opik 2.x `Optimization_Write` has neither a top-level `description`
-        nor `tags`. Both are folded into `metadata.description` and
-        `metadata.tags` so they survive on the optimization card.
-        """
-        merged_meta: dict = dict(metadata or {})
-        if description:
-            merged_meta["description"] = description
-        if tags:
-            merged_meta["tags"] = tags
-        body: dict = {
-            "dataset_name": dataset_name,
-            "objective_name": objective_name,
-            "status": status,
-        }
-        if optimization_id:
-            body["id"] = optimization_id
-        if name:
-            body["name"] = name
-        if merged_meta:
-            body["metadata"] = merged_meta
-        self._request("PUT", "/v1/private/optimizations", json=body)
-        return optimization_id or body.get("id", "")

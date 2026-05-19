@@ -33,14 +33,14 @@ Base path is always `/v1/private/...`. Auth is the Bearer/raw token in the
 | GET | `/datasets/{id}/items` | Page raw items (no experiment join) |
 | GET | `/datasets/{id}/items/experiments/items?experiment_ids=[…]` | Items joined with one experiment's outputs + scores |
 
-> All entity IDs (dataset, item, experiment, optimization) must be **UUID v7**,
+> All entity IDs (dataset, item, experiment) must be **UUID v7**,
 > not UUID v4. Python 3.14+ has `uuid.uuid7()`. UUID v4 returns 400 "id must be a version 7 UUID".
 
 ## Experiments
 
 | Verb | Path | Notes |
 |---|---|---|
-| POST | `/experiments` | Pre-mint `id` (uuid7) so bulk items can target it. Body: `{id, dataset_name, name, project_id, optimization_id?, type, status, metadata, tags}` |
+| POST | `/experiments` | Pre-mint `id` (uuid7) so bulk items can target it. Body: `{id, dataset_name, name, project_id, type, status, metadata, tags}` |
 | PUT | `/experiments/items/bulk` | **PUT not POST** (POST returns 405). Body: `{experiment_id, dataset_name, experiment_name, items}`. Field names are snake_case — camelCase silently treated as blank. Items carry `dataset_item_id`, `trace_id`, `input`, `output`, `feedback_scores`. |
 | GET | `/experiments/{id}` | Resolve dataset id, name, status |
 | GET | `/experiments?name=<n>` | Find by name |
@@ -48,41 +48,6 @@ Base path is always `/v1/private/...`. Auth is the Bearer/raw token in the
 > Always pass `project_id` on experiment create. Without it, items land
 > against the Opik default project and you lose the trace deep-links.
 > Experiments cannot be deleted via the REST API (405) — delete from the UI.
-
-## Optimizations
-
-| Verb | Path | Notes |
-|---|---|---|
-| GET | `/optimizations?name&dataset_id` | Find existing (idempotent grouping) |
-| PUT | `/optimizations` | Upsert. Body: `{id, name, dataset_name, objective_name, status, studio_config?}` |
-| POST | `/optimizations` | Create. Same body as PUT. |
-| GET | `/optimizations/{id}` | Status + linked experiments + `best_objective_score` |
-| GET | `/optimizations/studio/{id}/logs` | Presigned S3 URL for studio run logs |
-
-`optimization_id` on `create_experiment` is the only field linking a run
-to the timeline view. Setting it after the fact requires a manual update.
-
-**Two optimization modes:**
-
-*Manual comparison* (what `edd-run --optimization-name` does) — upsert an optimization,
-attach multiple experiments to it with `optimization_id`. No `studio_config` needed.
-The UI shows experiments side-by-side on the same timeline.
-
-*Studio automation* (what `opik_optimizer` does) — include `studio_config` in the
-upsert body:
-```json
-{
-  "studio_config": {
-    "dataset_name": "my-dataset",
-    "prompt": {"messages": [{"role": "system", "content": "..."}, {"role": "user", "content": "{var}"}]},
-    "llm_model": {"model": "anthropic/claude-haiku-4-5-20251001"},
-    "evaluation": {"metrics": [{"type": "custom_metric_fn"}]},
-    "optimizer": {"type": "metaprompt"}
-  }
-}
-```
-The `opik_optimizer` Python SDK handles this automatically. Use `pip install opik-optimizer`
-and `MetaPromptOptimizer.optimize_prompt()` rather than constructing `studio_config` by hand.
 
 ## Manual evaluation (automation rules)
 
@@ -112,7 +77,6 @@ model's provider isn't credentialed in the workspace.
 | What | URL |
 |---|---|
 | Experiment | `<OPIK_URL>/experiments/<id>` |
-| Optimization | `<OPIK_URL>/optimizations/<id>` |
 | Trace | `<OPIK_URL>/traces/<id>` |
 | Dataset | `<OPIK_URL>/datasets/<id>` |
 

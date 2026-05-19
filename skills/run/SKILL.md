@@ -112,6 +112,5 @@ See also: [pipeline anti-patterns](../CLAUDE.md#pipeline-anti-patterns) (global)
 
 ## Next
 
-- Mode 1 → done
+- Mode 1 → done (use `edd score --evaluators "<name>"` if you want judge results without promoting to dataset)
 - Mode 2 + need a durable scoreboard → [`edd:experiment`](../experiment/SKILL.md)
-- Mode 3 + want to optimize one judge → [`edd:optimisation`](../optimisation/SKILL.md)

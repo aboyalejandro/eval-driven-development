@@ -41,7 +41,7 @@ Use this table as a completeness check, not a menu. If a dimension you derived m
 | Correct skill or sub-agent triggered | Routing |
 | Session context carried across turns | Memory / Persistence |
 
-One dimension per row. If the diff touches more than one, pick the dominant one first and run the secondary as a follow-up experiment under the same optimization (see `experiment-grouping.md`).
+One dimension per row. If the diff touches more than one, pick the dominant one first and run the secondary as a follow-up experiment against the same dataset.
 
 ## Step 3 — build if missing
 

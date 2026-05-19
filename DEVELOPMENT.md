@@ -17,7 +17,7 @@ Inside any Claude Code session:
 /plugin install edd@edd
 ```
 
-After install, every Claude Code session sees `/edd:edd`, `/edd:scope-agent`, `/edd:scope-evals`, `/edd:run`, `/edd:experiment`, `/edd:optimisation`.
+After install, every Claude Code session sees `/edd:edd`, `/edd:scope-agent`, `/edd:scope-evals`, `/edd:run`, `/edd:experiment`.
 
 **Note:** symlinking the repo into `~/.claude/plugins/` does **not** auto-enable — the marketplace + install flow is the supported path.
 
@@ -75,7 +75,7 @@ In Claude Code, from the target project's dir:
 ```
 
 The router asks two questions:
-- **Mode** — `1` quick trace analysis, `2` dataset + experiment, `3` optimization
+- **Mode** — `1` quick trace analysis (optionally with `edd score`), `2` dataset + experiment in Opik UI
 - **Aggression** — `1` happy path, `2` mixed, `3` adversarial
 
 It writes `.edd/session.json` (gitignored) and dispatches. First time, it'll route through `/edd:scope-agent` to derive `regressions.txt` and `.edd/promises.md` from your agent source.
@@ -85,9 +85,8 @@ Or skip the router and call a phase directly:
 ```
 /edd:scope-agent     # first time only — extract promise inventory
 /edd:scope-evals     # create missing Opik judges
-/edd:run             # inner loop
-/edd:experiment      # outer loop (Opik UI)
-/edd:optimisation    # targeted prompt optimization
+/edd:run             # inner loop (optional `edd score` for sim-only judge results)
+/edd:experiment      # outer loop (Opik UI scorecard)
 ```
 
 See [`skills/CLAUDE.md`](skills/CLAUDE.md) for the full DAG and per-skill details.

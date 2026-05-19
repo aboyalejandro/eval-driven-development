@@ -67,8 +67,7 @@ plumbing rather than the agent itself.
 | Symptom | Cause | Fix |
 |---|---|---|
 | Experiment items table shows zero scores even though traces have scores | Trigger lands scores on traces; items table is a separate copy | `edd-run` polls trace scores and copies them to items — if you re-score outside the script, mirror the same poll-and-copy |
-| Scores moved but the dataset shape stayed identical | Dataset version drifted under the optimization | Pin `dataset_version_id` per experiment, or bump the dataset name and start a new optimization |
-| Optimization timeline shows experiments with very different N | Some runs hit a truncated trace window | Widen `--from` on `edd-build`, or build the dataset once and reuse for every experiment in the optimization |
+| Scores moved but the dataset shape stayed identical | Dataset version drifted between runs | Pin `dataset_version_id` per experiment, or bump the dataset name |
 | Inspect digest has no rows | The dataset items lack `source_trace_id` (extractor dropped it) | Rebuild with a working extractor; verify with `edd-build --dry-run` first |
 
 ## Two failed iterations on the same dimension

@@ -7,7 +7,7 @@ Backs `edd-build`, `edd-run`, `edd-inspect`. Promotes sim-tagged traces into a d
 | File | CLI | Role |
 |---|---|---|
 | `build_dataset.py` | `edd-build` | Sim-tagged traces → Opik dataset items |
-| `run_experiment.py` | `edd-run` | Dataset → experiment (optional `--optimization-name` grouping) |
+| `run_experiment.py` | `edd-run` | Dataset → experiment with judge scores |
 | `inspect_experiment.py` | `edd-inspect` | Per-evaluator digest + failure surface |
 | `__init__.py` | — | Marker only |
 
@@ -34,9 +34,7 @@ Three things in one command:
 
 **Required: `--description "..."`.** Surfaces on the Opik experiment card; the hypothesis lives here.
 
-**Optimization grouping.** `--optimization-name <name>` wraps the experiment under an Opik Optimization so multiple runs appear on one timeline. Pair with `--experiment-name` to label each variant. First call also accepts `--optimization-description` — reused when the same optimization is upserted later. `--finalize-optimization` closes it once you're done iterating. See [`../../references/experiment-grouping.md`](../../references/experiment-grouping.md).
-
-**Tags applied to experiment + optimization:** same shape as `edd-build` — `[branch_tag, *session_tags(), *extra_tag]`.
+**Tags applied to the experiment:** same shape as `edd-build` — `[branch_tag, *session_tags(), *extra_tag]`.
 
 **Branch-tag warning.** Same `--allow-main` escape hatch as `edd-build`.
 
@@ -59,4 +57,4 @@ All three CLIs go through `shared.opik_client.OpikClient`. Do not call Opik REST
 ## Up one level
 
 - Engine: [../CLAUDE.md](../CLAUDE.md)
-- Skill that uses this: [`edd:experiment`](../../skills/experiment/SKILL.md) (and [`edd:optimisation`](../../skills/optimisation/SKILL.md) for 3A)
+- Skill that uses this: [`edd:experiment`](../../skills/experiment/SKILL.md)
