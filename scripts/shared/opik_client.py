@@ -206,6 +206,29 @@ class OpikClient:
             json={"dataset_name": dataset_name, "items": wrapped},
         )
 
+    def update_dataset(
+        self,
+        dataset_id: str,
+        name: str,
+        description: str | None = None,
+        visibility: str | None = None,
+        tags: list[str] | None = None,
+    ) -> None:
+        """Update dataset metadata in place. Opik requires `name` on every update —
+        pass the current name if you only want to change description/tags.
+
+        `description` max 255 chars; `visibility` is `private` or `public`.
+        Returns 204; no body to parse.
+        """
+        body: dict = {"name": name}
+        if description is not None:
+            body["description"] = description
+        if visibility is not None:
+            body["visibility"] = visibility
+        if tags is not None:
+            body["tags"] = tags
+        self._request("PUT", f"/v1/private/datasets/{dataset_id}", json=body)
+
     def stream_dataset_items(self, dataset_id: str, max_pages: int = 50) -> list[dict]:
         """Page raw dataset items (no experiment join). Use before any experiment exists."""
         out: list[dict] = []
