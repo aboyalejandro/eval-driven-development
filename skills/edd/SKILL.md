@@ -1,6 +1,6 @@
 ---
 name: edd
-description: Eval-Driven Development router — picks the mode and dispatches. Asks two questions (mode 1/2, aggression 1/2/3), writes `.edd/session.json`, hands off to one of the phase skills. Use this when the user wants an eval workflow but hasn't named a phase. Skill-specific work belongs in `edd:scope-agent`, `edd:scope-evals`, `edd:run`, or `edd:experiment`.
+description: Eval-Driven Development router — picks the mode and dispatches. Asks two questions (mode 1/2, aggression 1/2/3), writes `.edd/session.json`, hands off to one of the phase skills. Use this when the user wants an eval workflow but hasn't named a phase. Skill-specific work belongs in `edd:scope-agent`, `edd:scope-evals`, `edd:run`, `edd:experiment`, or `edd:expand`.
 ---
 
 # edd — router
@@ -31,7 +31,7 @@ Write `.edd/session.json` with the keys listed in [`skills/CLAUDE.md`](../CLAUDE
 | Mode | Scope needed first? | Then run | Then |
 |---|---|---|---|
 | 1 | Light (just regressions.txt) | `edd:run` | done |
-| 2 | Full (promises + evaluators) | `edd:run` → score green | `edd:experiment` |
+| 2 | Full (promises + evaluators) | `edd:run` → score green | `edd:experiment` → optional [`edd:expand`](../expand/SKILL.md) for coverage growth |
 
 **Always check first:**
 - `regressions.txt` exists at repo root → scope-agent already done; skip unless agent source changed

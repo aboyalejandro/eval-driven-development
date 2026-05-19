@@ -11,11 +11,17 @@ Eval-Driven Development is split into a router + five focused sub-skills. Each `
 | [`edd:scope-evals`](scope-evals/SKILL.md) | promise inventory exists but Opik project lacks the judges | `.edd/evaluator-plan.md`, `_local/create_evaluators.py`, judges in Opik |
 | [`edd:run`](run/SKILL.md) | Mode 1 (quick analysis) or Mode 2 Phase 1 (inner loop) | `scenarios.txt`, sim-tagged traces, score table or inline trace report |
 | [`edd:experiment`](experiment/SKILL.md) | Mode 2 Phase 2 — durable dataset + experiment in Opik UI | Opik dataset (`<project>-<topic>-v<N>`), experiment with scorecard |
+| [`edd:expand`](expand/SKILL.md) | Optional — AI-driven growth of an existing dataset (coverage gaps, adversarial variants) | More items in the seed dataset, targeting the underrepresented bucket |
 
 ## Pipeline DAG
 
 ```
-scope-agent ──► scope-evals ──► run ──► experiment
+scope-agent ──► scope-evals ──► run ──► experiment ──► (re-score)
+                                  │           │
+                                  │           └──► expand ──┐
+                                  │                         │
+                                  │  (loops back to ────────┘
+                                  │   experiment Phase E)
                                   │
                                   └─► (stop here for Mode 1 / most branch work)
 ```

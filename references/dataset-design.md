@@ -134,4 +134,5 @@ same shape is fine.
 
 - [`evaluator-selection.md`](evaluator-selection.md) — pick the evaluator before designing the dataset shape
 - [`trace-enrichment.md`](trace-enrichment.md) — extractor depends on enrichment writing `metadata.*`
+- [`dataset-expansion.md`](dataset-expansion.md) — grow the coverage mix with AI variants once the seed dataset exists
 - [`../skills/experiment/SKILL.md`](../skills/experiment/SKILL.md) — skill that runs `edd-build`

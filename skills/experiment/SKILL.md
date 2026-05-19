@@ -117,4 +117,5 @@ See also: [pipeline anti-patterns](../CLAUDE.md#pipeline-anti-patterns) (global 
 
 ## Next
 
-→ Inspect digest surfaces persistent failures on one dimension → fix the prompt / dataset / evaluator and re-run Phase E for a fresh comparison experiment.
+- Inspect digest surfaces persistent failures on one dimension → fix the prompt / dataset / evaluator and re-run Phase E for a fresh comparison experiment.
+- Coverage is thin on a specific bucket (per [`references/dataset-design.md`](../../references/dataset-design.md) target mix) → [`edd:expand`](../expand/SKILL.md) grows the dataset using AI-driven variants targeted at the gap, then loop back to Phase E.

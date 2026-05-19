@@ -14,6 +14,7 @@ Standalone markdown files. **Decision aids, not narrative docs** — each skill 
 | `score-reading.md` | reading the score table (thresholds, the "0 = not applicable" convention, run-comparison) | [`edd:run`](../skills/run/SKILL.md) |
 | `failure-modes.md` | red judge → real-vs-noise check (biases, non-determinism) and symptom → fix-surface map | [`edd:run`](../skills/run/SKILL.md), [`edd:experiment`](../skills/experiment/SKILL.md) |
 | `dataset-design.md` | item shape, coverage targets, naming `<project>-<topic>-v<N>` | [`edd:experiment`](../skills/experiment/SKILL.md) |
+| `dataset-expansion.md` | when + how to grow a seed dataset with AI (`/datasets/expand`); preserve_fields + variation_instructions design | [`edd:expand`](../skills/expand/SKILL.md) |
 | `opik-endpoints.md` | REST scripts erroring on Opik API drift | [`shared/opik_client.py`](../scripts/shared/CLAUDE.md) |
 
 ## Naming
@@ -39,6 +40,7 @@ There is no canonical order — load the file that matches the question you have
 | "What's in `trace.output.value` for this SDK?" | `trace-inspection.md` |
 | "How do I normalize that into `metadata.*`?" | `trace-enrichment.md` |
 | "Is `v2` of this dataset different enough to warrant a new version?" | `dataset-design.md` |
+| "I want more items in this dataset — what should expansion target?" | `dataset-expansion.md` |
 | "Opik just returned 404 on this endpoint" | `opik-endpoints.md` |
 
 ## Up one level

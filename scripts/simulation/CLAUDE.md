@@ -9,6 +9,7 @@ Backs `edd-build`, `edd-run`, `edd-inspect`. Promotes sim-tagged traces into a d
 | `build_dataset.py` | `edd-build` | Sim-tagged traces → Opik dataset items |
 | `run_experiment.py` | `edd-run` | Dataset → experiment with judge scores |
 | `inspect_experiment.py` | `edd-inspect` | Per-evaluator digest + failure surface |
+| `expand_dataset.py` | `edd-expand` | AI-driven dataset growth via Opik `/datasets/expand` |
 | `__init__.py` | — | Marker only |
 
 ## `edd-build`
@@ -38,6 +39,16 @@ Three things in one command:
 
 **Branch-tag warning.** Same `--allow-main` escape hatch as `edd-build`.
 
+## `edd-expand`
+
+AI-driven growth of an existing dataset. Calls Opik's `/datasets/expand` (same primitive as the UI's "Expand with AI" button), receives generated samples, optionally persists via the same write path as `edd-build`.
+
+Required: `--dataset-name`, `--model`, `--count`. Optional steering: `--variation-instructions` (free-form, gap-targeted) or `--custom-prompt` (full prompt override), `--preserve-field` (repeatable — fields whose pattern the LLM must keep). Add `--max-tokens` for Anthropic models.
+
+**Two-step contract** — `--dry-run` prints the first 3 samples to stdout without persisting; re-run without the flag to insert. Always `--dry-run` first; expansion costs LLM tokens and polluted datasets are hard to clean.
+
+The skill [`edd:expand`](../../skills/expand/SKILL.md) reads the seed dataset, the agent's promises, and the evaluator plan, then derives all params from the actual coverage gap. The CLI is mechanical.
+
 ## `edd-inspect`
 
 Joins dataset items to experiment outputs and feedback scores. Prints:
@@ -57,4 +68,4 @@ All three CLIs go through `shared.opik_client.OpikClient`. Do not call Opik REST
 ## Up one level
 
 - Engine: [../CLAUDE.md](../CLAUDE.md)
-- Skill that uses this: [`edd:experiment`](../../skills/experiment/SKILL.md)
+- Skills that use this: [`edd:experiment`](../../skills/experiment/SKILL.md), [`edd:expand`](../../skills/expand/SKILL.md)
