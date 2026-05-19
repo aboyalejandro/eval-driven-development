@@ -61,6 +61,14 @@ Default extractor reads `metadata.user_message` + `metadata.assistant_response`.
 
 **Tags auto-applied:** `--branch-tag` + `topic` / `mode` / `aggression` from `.edd/session.json` + any `--tag` you pass. Branch-tag warning prints if it references `main`/`master` — pass `--allow-main` to silence.
 
+## Phase D.5 — Expand for coverage (gate before Phase E)
+
+**Hard ordering rule:** if you're going to grow the dataset with AI variants, do it **here**, between build and judge. Running Phase E on a thin seed and then expanding wastes judge spend on a stale scorecard you can't compare against the expanded one.
+
+Stream a sample of the seed items and compare actual coverage against the target mix in [`references/dataset-design.md`](../../references/dataset-design.md). If any bucket is materially under-represented (happy-path, wording variants, edge cases, adversarial, multi-turn, negatives), hand off to [`edd:expand`](../expand/SKILL.md). The expand skill derives `variation_instructions` and `preserve_fields` from the actual gap; it never sits between two judge runs.
+
+If the seed already covers the target mix at the size you need, skip expand and go straight to Phase E.
+
 ## Phase E — Run the experiment
 
 ```bash
@@ -117,5 +125,5 @@ See also: [pipeline anti-patterns](../CLAUDE.md#pipeline-anti-patterns) (global 
 
 ## Next
 
-- Inspect digest surfaces persistent failures on one dimension → fix the prompt / dataset / evaluator and re-run Phase E for a fresh comparison experiment.
-- Coverage is thin on a specific bucket (per [`references/dataset-design.md`](../../references/dataset-design.md) target mix) → [`edd:expand`](../expand/SKILL.md) grows the dataset using AI-driven variants targeted at the gap, then loop back to Phase E.
+- Inspect digest surfaces persistent failures on one dimension → fix the prompt / dataset / evaluator and re-run **from Phase D** with a fresh dataset version (`<topic>-v<N+1>`). Expansion happens before judges, so a new comparison run means a new build.
+- Persistent failures suggest the coverage mix is wrong → bump the dataset version, return to Phase D.5 to re-design coverage with [`edd:expand`](../expand/SKILL.md), then judge.

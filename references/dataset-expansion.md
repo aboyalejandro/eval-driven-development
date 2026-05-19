@@ -2,16 +2,24 @@
 
 Opik 2.x ships an `/datasets/expand` endpoint that generates synthetic items by sending the seed dataset's shape + content to an LLM. This is the same primitive the Opik UI's "Expand with AI" button hits. EDD wraps it as `edd-expand`; the [`edd:expand`](../skills/expand/SKILL.md) skill drives the params.
 
+## Hard ordering rule
+
+Expansion is a gate **between `edd-build` and `edd-run`**. Never after. Once judges have run on a dataset version, the scorecard is locked to that shape; adding items means re-judging from scratch — bump the version (`v<N+1>`), rebuild, expand on the new version, then judge once.
+
+The whole point: pay LLM judge cost on the final shape, not on a seed-then-expanded sequence where the first scorecard is throwaway.
+
 ## When to expand
 
 | Situation | Expand? |
 |---|---|
-| Sim batch is small (<20 items) and the judge thinks everything is happy-path | **Yes** — boost coverage before running an experiment |
-| Dataset is large but skewed toward one bucket | **Yes** — target the underrepresented bucket |
-| You need adversarial wording variants on existing intents | **Yes** — that's exactly what `variation_instructions` is for |
+| Seed dataset built, haven't called `edd-run` yet | **Yes — this is the only valid window** |
+| Sim batch is small (<20 items) and skewed happy-path | **Yes** — boost coverage before judges fire |
+| Dataset is large but one bucket dominates (per `dataset-design.md` mix) | **Yes** — target the underrepresented bucket |
+| You need adversarial wording variants on existing intents | **Yes** — that's what `variation_instructions` is for |
 | You haven't run any real sim traces yet | **No** — expansion needs a seed shape; build a small real-trace dataset first |
 | The judges aren't calibrated yet | **No** — uncalibrated judges + synthetic items compounds noise |
-| You're mid-experiment comparing variants | **No** — changing the dataset under an in-flight comparison destroys the apples-to-apples |
+| Judges already ran on this dataset version | **No — gate violation.** Bump to `v<N+1>`, rebuild, then expand |
+| Mid-experiment comparing variants on the same dataset | **No** — changing the dataset under an in-flight comparison destroys apples-to-apples |
 
 ## Two-step flow — generate → review → persist
 
@@ -54,6 +62,7 @@ The defaults aren't enough on their own. Generic instructions produce generic it
 
 ## Anti-patterns
 
+- **Expanding after judges already ran.** Hard-gate violation. Even if the new items would help, the paid scorecard is now stale — apples-to-oranges across the expansion boundary. Bump dataset version, rebuild, expand on the new version, then judge.
 - **Calling `/datasets/expand` without inspecting seed items first.** Generic LLM filler. The whole point of the skill is to derive agent-specific steering.
 - **Generic variation_instructions** ("make some edge cases"). The LLM optimises for what it's told; vague prompts → vague items.
 - **Large `--count` on the first run.** Start at 5–10; scale only after dry-run confirms targeting. Polluted datasets are hard to clean — Opik's delete endpoint is unreliable on items, UI sweep is manual.

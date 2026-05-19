@@ -11,7 +11,8 @@ The point: generic synthetic data is noise. The skill exists because the params 
 
 ## Preconditions
 
-- A seed dataset exists in Opik (created by [`edd:experiment`](../experiment/SKILL.md) Phase D)
+- A seed dataset exists in Opik (created by [`edd:experiment`](../experiment/SKILL.md) **Phase D**)
+- **No experiment has run on this dataset version yet** ([`edd:experiment`](../experiment/SKILL.md) Phase E has not been called). Expansion is a hard gate before judging — never after. Mid-experiment growth destroys apples-to-apples comparison; if you already judged, bump the dataset version and rebuild before expanding.
 - `.edd/promises.md` exists ([`edd:scope-agent`](../scope-agent/SKILL.md))
 - `.edd/evaluator-plan.md` exists ([`edd:scope-evals`](../scope-evals/SKILL.md))
 - `.edd/session.json` has `topic` + `aggression`
@@ -104,6 +105,7 @@ If you bump, build a new dataset (`edd-build` against the same trace set with a 
 
 ## Anti-patterns
 
+- **Expanding after judges already ran on the dataset.** The whole point of expand-before-judge is one paid scoring pass on the final shape. Adding items post-judge means re-judging from scratch — bump the dataset version and rebuild instead. See the [hard ordering rule](../CLAUDE.md#pipeline-dag).
 - **Skipping inspection — calling `/datasets/expand` without reading seed items first.** The result is generic LLM filler with no relationship to the agent's promises. Always Step 1 first.
 - **Generic variation_instructions ("make some edge cases").** The endpoint optimises for the prompt it receives; vague prompts produce vague items. Use the agent's actual skill names + tool names + domain terms.
 - **Preserving `source_trace_id`** — synthetic items don't have a real trace; preserving the field tells the LLM to invent trace IDs that won't deep-link.
@@ -115,4 +117,4 @@ See also: [pipeline anti-patterns](../CLAUDE.md#pipeline-anti-patterns) (global)
 
 ## Next
 
-→ Run [`edd:experiment`](../experiment/SKILL.md) Phase E to score the expanded dataset and see whether the new variants change judge behaviour vs the baseline.
+→ Return to [`edd:experiment`](../experiment/SKILL.md) **Phase E** to judge the expanded dataset. The expansion was the gate; judging is the next paid step, run only on the final shape.

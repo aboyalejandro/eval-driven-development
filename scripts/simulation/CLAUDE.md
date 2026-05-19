@@ -43,6 +43,8 @@ Three things in one command:
 
 AI-driven growth of an existing dataset. Calls Opik's `/datasets/expand` (same primitive as the UI's "Expand with AI" button), receives generated samples, optionally persists via the same write path as `edd-build`.
 
+**Pipeline position is fixed: run `edd-expand` between `edd-build` and `edd-run`, never after.** Judging a thin seed and then expanding wastes LLM judge spend on a stale scorecard you can't compare to the post-expansion one. If you already judged, bump the dataset version and rebuild before expanding.
+
 Required: `--dataset-name`, `--model`, `--count`. Optional steering: `--variation-instructions` (free-form, gap-targeted) or `--custom-prompt` (full prompt override), `--preserve-field` (repeatable — fields whose pattern the LLM must keep). Add `--max-tokens` for Anthropic models.
 
 **Two-step contract** — `--dry-run` prints the first 3 samples to stdout without persisting; re-run without the flag to insert. Always `--dry-run` first; expansion costs LLM tokens and polluted datasets are hard to clean.

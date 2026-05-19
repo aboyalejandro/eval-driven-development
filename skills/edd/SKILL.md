@@ -31,7 +31,7 @@ Write `.edd/session.json` with the keys listed in [`skills/CLAUDE.md`](../CLAUDE
 | Mode | Scope needed first? | Then run | Then |
 |---|---|---|---|
 | 1 | Light (just regressions.txt) | `edd:run` | done |
-| 2 | Full (promises + evaluators) | `edd:run` → score green | `edd:experiment` → optional [`edd:expand`](../expand/SKILL.md) for coverage growth |
+| 2 | Full (promises + evaluators) | `edd:run` → score green | `edd:experiment` Phase D (build) → [`edd:expand`](../expand/SKILL.md) if coverage thin → `edd:experiment` Phase E (judge) → inspect. **Expansion is a hard gate before Phase E** — never after. |
 
 **Always check first:**
 - `regressions.txt` exists at repo root → scope-agent already done; skip unless agent source changed

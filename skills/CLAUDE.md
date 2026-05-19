@@ -16,15 +16,17 @@ Eval-Driven Development is split into a router + five focused sub-skills. Each `
 ## Pipeline DAG
 
 ```
-scope-agent ──► scope-evals ──► run ──► experiment ──► (re-score)
-                                  │           │
-                                  │           └──► expand ──┐
-                                  │                         │
-                                  │  (loops back to ────────┘
-                                  │   experiment Phase E)
+scope-agent ──► scope-evals ──► run ──► experiment Phase D (build dataset)
+                                  │                  │
+                                  │                  ├──► expand (optional — AI growth)
+                                  │                  │           │
+                                  │                  │           ▼
+                                  │                  └──► experiment Phase E (judge) ──► inspect
                                   │
                                   └─► (stop here for Mode 1 / most branch work)
 ```
+
+**Hard ordering rule:** if you're going to expand, do it **before** Phase E. Judging a tiny seed and then expanding wastes LLM spend on a stale-shape scorecard; you'd have to re-judge to compare apples-to-apples. The expand step never sits between two judge runs.
 
 Each downstream skill checks for cached outputs from upstream and skips re-derivation when fresh.
 
