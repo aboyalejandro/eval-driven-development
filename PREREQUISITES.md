@@ -70,7 +70,7 @@ If the agent doesn't already trace to Opik, wire it up before running this loop.
 
 - Hosted (`comet.com/opik`) or self-hosted instance
 - A separate project for sim traffic — never mix with production
-- Evaluator rules ("judges") defined in that project. For the inner loop, create them with `enabled=False, sampling_rate=0` (manual-trigger mode) — the framework fires them on exactly the traces it just ran. See `references/evaluator-selection.md` Step 4 for when to switch to auto-sample.
+- Evaluator rules ("judges") defined in that project. For the inner loop, create them with `enabled=False, sampling_rate=1.0` (manual-trigger mode) — the framework fires them on exactly the traces it just ran. The `sampling_rate=1.0` is pre-staging for when you flip `enabled=True` later. See `references/evaluator-selection.md` Step 4 for when to switch to auto-sample.
 - API key with read access to traces and write access to datasets, experiments, automations
 
 ## Caveat: REST API coupling

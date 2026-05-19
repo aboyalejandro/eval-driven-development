@@ -1,6 +1,6 @@
 ---
 name: scope-evals
-description: Configure manual-trigger judges in Opik — derive one evaluator dimension per promise, list what already exists, generate `_local/create_evaluators.py` for the gaps, run it. Output is `.edd/evaluator-plan.md` + judges live in Opik with `enabled=False, sampling_rate=0`. Invoke as `edd:scope-evals` or when the user says "set up judges", "create evaluators", "scope the evals". For *firing* judges and reading scores, see `edd:run`.
+description: Configure manual-trigger judges in Opik — derive one evaluator dimension per promise, **match against existing evaluators on the account first**, generate `_local/create_evaluators.py` only for gaps, run it. Output is `.edd/evaluator-plan.md` + judges live in Opik with `enabled=False, sampling_rate=1.0` (disabled blocks auto-firing during experimentation; sampling_rate pre-staged so flipping to auto-sample is a one-field change). Invoke as `edd:scope-evals` or when the user says "set up judges", "create evaluators", "scope the evals". For *firing* judges and reading scores, see `edd:run`.
 ---
 
 # edd:scope-evals — evaluator dimensions + Opik judges
@@ -30,15 +30,33 @@ Write derived dimensions to `.edd/evaluator-plan.md`:
   Scoring: 1 = explicitly verified, 0 = failed OR not applicable
 ```
 
-## Step 2 — List existing Opik evaluators
+## Step 2 — Reuse-first match against existing Opik evaluators
+
+Skipping this step burns tokens creating duplicates. Reuse beats create.
+
+Pull existing evaluators (names + prompts) from the project:
 
 ```python
 import sys; sys.path.insert(0, 'scripts')
 from shared.opik_client import OpikClient
-print('\n'.join(OpikClient().list_evaluator_names()))
+evs = OpikClient().get_evaluators().get("content", [])
+project_evs = [e for e in evs if e.get("project_name") == "<opik-project>"]
+for e in project_evs:
+    print(OpikClient.evaluator_schema_name(e))
+    print("  prompt:", ((e.get("code") or {}).get("prompt") or "")[:300])
 ```
 
-Pass `project="<opik-project>"` to filter to one project. Mark each dimension in `.edd/evaluator-plan.md` as **REUSE** (match exists) or **CREATE** (gap).
+For each derived dimension, **read both the existing eval's name and its prompt** — name similarity alone is misleading (`grounding` vs `article-grounding` may or may not score the same thing). Match when:
+
+- the existing rubric scores the same promise (compare against the dimension's success/failure criteria), and
+- its variable paths align with what enrichment populates (`metadata.*`).
+
+Mark the dimension in `.edd/evaluator-plan.md`:
+
+- **REUSE: `<existing-schema-name>`** — record the existing schema name verbatim. `edd:run` / `edd:experiment` `--evaluator` flag uses it as-is.
+- **CREATE** — no good match; gap goes to Step 3.
+
+When unsure between REUSE and CREATE, default to REUSE if the existing rubric is within shouting distance of the promise. Recalibrating one judge is cheaper than maintaining two near-duplicates.
 
 ## Step 3 — Generate `_local/create_evaluators.py`
 
@@ -62,13 +80,14 @@ Tools called: {{metadata.tools_called}}
 
 Return JSON: {"score": 0|1, "reason": "<one sentence>"}""",
     model="anthropic/claude-sonnet-4-6",
-    enabled=False,        # manual-trigger only — judges run only when `edd score` triggers
-    sampling_rate=0,      # do not auto-fire on production traces
+    enabled=False,         # disabled blocks automatic firing during experimentation — skill decides when to fire
+    sampling_rate=1.0,     # pre-stage full sampling so flipping `enabled=True` later is a one-field change
 )
 ```
 
 Rules baked into the template:
-- **Manual-trigger only.** `enabled=False, sampling_rate=0` — `edd score` fires the judge; nothing else does.
+- **`enabled=False` is the gate.** `trigger_evaluation` ignores both flags and manual-fires anyway, so the skill always controls when judges run during the inner loop / experiment. Disabled prevents *automatic* firing on stray traces (concurrent dev, prod traffic in shared projects).
+- **`sampling_rate=1.0` is staging.** When you graduate the judge to auto-sample mode (rubric calibrated, watching prod), flipping `enabled=True` is the only change needed. Avoids "I enabled it but nothing fires" foot-gun from `sampling_rate=0`.
 - **Read from `metadata.*`.** Enrichment populates these (see `_local/enrich_traces_<sdk>.py`); never wire the judge to native SDK trace paths.
 - **Binary scoring.** 1 = explicitly verified correct, 0 = failed OR not applicable. No half-credit, no NA.
 
@@ -95,8 +114,8 @@ Append to `.edd/evaluator-plan.md` which trace paths each judge expects. This is
 ## Anti-patterns
 
 - Creating one mega-judge that scores "overall quality" — score per dimension or you lose signal.
-- Leaving `enabled=True` or `sampling_rate>0` — judges will fire on every production trace and burn LLM spend.
-- Re-creating judges that already exist — list first, diff, then create only gaps.
+- Leaving `enabled=True` at creation — judges will fire on every matching trace (sim + prod + stray dev) and burn LLM spend before the rubric is calibrated.
+- Re-creating judges that already exist — Step 2 reuse-match is the gate. Match by *rubric*, not just by name.
 - Reading from native SDK trace paths in the judge prompt — write from `metadata.*` only.
 
 See also: [pipeline anti-patterns](../CLAUDE.md#pipeline-anti-patterns) (global).

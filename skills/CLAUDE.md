@@ -9,8 +9,8 @@ Eval-Driven Development is split into a router + five focused sub-skills. Each `
 | [`edd:edd`](edd/SKILL.md) | top-level entry — user wants an eval workflow without naming a phase | `.edd/session.json`, dispatch to one below |
 | [`edd:scope-agent`](scope-agent/SKILL.md) | new agent, or agent source changed | `.edd/promises.md`, `regressions.txt` |
 | [`edd:scope-evals`](scope-evals/SKILL.md) | promise inventory exists but Opik project lacks the judges | `.edd/evaluator-plan.md`, `_local/create_evaluators.py`, judges in Opik |
-| [`edd:run`](run/SKILL.md) | Mode 1 (quick analysis) or Mode 2 Phase 1 (inner loop) | `scenarios.txt`, sim-tagged traces, score table or inline trace report |
-| [`edd:experiment`](experiment/SKILL.md) | Mode 2 Phase 2 — durable dataset + experiment in Opik UI | Opik dataset (`<project>-<topic>-v<N>`), experiment with scorecard |
+| [`edd:run`](run/SKILL.md) | Mode 1 (quick analysis, judges optional) or Mode 2 Phase 1 (emit + tag + smoke-judge-check) | `scenarios.txt`, sim-tagged traces, inline trace report (+ optional Mode 1 score table) |
+| [`edd:experiment`](experiment/SKILL.md) | Mode 2 Phase 2 — durable dataset + experiment, **sole judge plane** for comparison | Opik dataset (`<project>-<topic>-v<N>`), experiment with scorecard |
 | [`edd:expand`](expand/SKILL.md) | Optional — AI-driven growth of an existing dataset (coverage gaps, adversarial variants) | More items in the seed dataset, targeting the underrepresented bucket |
 
 ## Pipeline DAG
@@ -47,13 +47,15 @@ All sub-skills read/write `.edd/session.json` (gitignored). Keys:
 Global rules — apply across every sub-skill. Skill-specific anti-patterns live inside each SKILL.md.
 
 - **Re-deriving cached outputs every session.** `regressions.txt` and Opik judges persist. Check timestamps and re-run scope-* only when source has changed.
-- **`edd:experiment` before `edd:run` is green.** Judges that misfire on 5 traces will misfire on 500 — find that out cheap.
+- **`edd:experiment` before `edd:run` smoke check passes.** Judges that don't land on 5 traces won't land on 500 — verify cheap, scale once.
+- **Iterating Mode 2 on the trace-plane score table.** Mode 2's comparison plane is the experiment, not the trace. Inner loop is emit + smoke-only.
 - **Dataset rewrite in place.** New item shape ⇒ new version. Cross-version comparisons are noise.
 
 ## Stopping rules
 
-- **Two prompt iterations on the same red judge ⇒ stop tweaking, widen the search.** The next thing to question is the evaluator, the dataset, or the underlying behavior model — not the prompt phrasing. See [`references/failure-modes.md`](../references/failure-modes.md) for prompt-iteration vs judge-noise distinction.
-- **Score-table green on regressions.txt ⇒ promote to experiment** (Mode 2) **or ship** (Mode 1).
+- **Two prompt iterations on the same red judge ⇒ stop tweaking, widen the search.** The next thing to question is the evaluator, the dataset, or the underlying behavior model — not the prompt phrasing. See [`references/failure-modes.md`](../references/failure-modes.md) for prompt-iteration vs judge-noise distinction. (Applies at the experiment plane in Mode 2; at the inline / `edd score` plane in Mode 1.)
+- **Mode 2: smoke check passes ⇒ promote to experiment.** Mode 2's stop signal is "judges land", not "scores are green" — green is what you discover *at* the experiment plane.
+- **Mode 1: inline trace findings sufficient ⇒ ship** (or run `edd score` once for a one-shot table).
 
 ## Naming conventions
 

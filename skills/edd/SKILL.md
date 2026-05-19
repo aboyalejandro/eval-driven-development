@@ -14,8 +14,8 @@ After changes to prompts, tool surface, skills, model routing, or memory injecti
 ## Ask the user — two questions only
 
 1. **Mode** — which mode do you want to run?
-   - `1` — Quick trace analysis or sim-only scoring (no Opik UI, Claude Code reads traces inline, optional `edd score` for judge results) → `edd:run`
-   - `2` — Dataset + experiment (full inner + outer loop, durable scorecard in Opik UI) → `edd:run` then `edd:experiment`
+   - `1` — Quick trace analysis. Emit + tag traces; Claude reads them inline. **Judges optional** via `edd score --evaluators "..."` if the user wants a score table without a dataset → `edd:run`
+   - `2` — Dataset + experiment. Emit + tag, build a durable dataset, optional `edd:expand` for coverage, then experiment fires the judges. **Inner loop is emit-only** — the experiment plane is the sole scoring plane (trace-plane scores don't sync — see [`references/opik-endpoints.md#score-storage--two-planes-no-auto-sync`](../../references/opik-endpoints.md#score-storage--two-planes-no-auto-sync)). A 3–5 trace smoke-judge-check runs before the experiment to verify judges land at all → `edd:run` → `edd:experiment`
 
 2. **Aggression level** — how hard should the scenarios push the agent?
    - `1` — Harness validation: normal user flows, exact trigger phrases, happy paths
@@ -30,8 +30,8 @@ Write `.edd/session.json` with the keys listed in [`skills/CLAUDE.md`](../CLAUDE
 
 | Mode | Scope needed first? | Then run | Then |
 |---|---|---|---|
-| 1 | Light (just regressions.txt) | `edd:run` | done |
-| 2 | Full (promises + evaluators) | `edd:run` → score green | `edd:experiment` Phase D (build) → [`edd:expand`](../expand/SKILL.md) if coverage thin → `edd:experiment` Phase E (judge) → inspect. **Expansion is a hard gate before Phase E** — never after. |
+| 1 | Light (regressions.txt). Judges only if scoring inline. | `edd:run` (emit + inline read; optional `edd score`) | done |
+| 2 | Full (promises + evaluators) | `edd:run` emits + smoke-judge-checks 3–5 traces (harness health, not score iteration) | `edd:experiment` Phase D (build) → [`edd:expand`](../expand/SKILL.md) if coverage thin → `edd:experiment` Phase E (judge — sole judge plane) → inspect. **Expansion is a hard gate before Phase E** — never after. |
 
 **Always check first:**
 - `regressions.txt` exists at repo root → scope-agent already done; skip unless agent source changed
