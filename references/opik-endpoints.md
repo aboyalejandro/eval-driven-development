@@ -32,7 +32,7 @@ Base path is always `/v1/private/...`. Auth is the Bearer/raw token in the
 | PUT | `/datasets/items` | Upsert items. Each item shape: `{id (uuid7), source: "manual", data: {...fields...}}`. Flat item dicts return 422. |
 | GET | `/datasets/{id}/items` | Page raw items (no experiment join) |
 | GET | `/datasets/{id}/items/experiments/items?experiment_ids=[…]` | Items joined with one experiment's outputs + scores |
-| POST | `/datasets/expand` | AI-driven synthetic expansion. Body: `{id, model, sample_count?, preserve_fields?, variation_instructions?, custom_prompt?, max_completion_tokens?}`. Returns `{generated_samples: [...]}` — **does not auto-insert**, caller must `PUT /datasets/items` to persist. Same primitive as the UI's "Expand with AI" button. |
+| POST | `/datasets/{id}/expansions` | AI-driven synthetic expansion. Dataset id is a **path param** (plural `expansions`). Body: `{model, sample_count?, preserve_fields?, variation_instructions?, custom_prompt?, max_completion_tokens?}`. Returns `{generated_samples: [...], model, total_generated, generation_time}` where each generated sample is a full `DatasetItem` (`{id, source, data, ...}`) — caller **must unwrap `data` before re-inserting** via `PUT /datasets/items` or items end up double-wrapped at `data.data.<field>`. Same primitive as the UI's "Expand with AI" button. |
 
 > All entity IDs (dataset, item, experiment) must be **UUID v7**,
 > not UUID v4. Python 3.14+ has `uuid.uuid7()`. UUID v4 returns 400 "id must be a version 7 UUID".

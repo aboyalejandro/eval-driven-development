@@ -100,21 +100,26 @@ def main(
     )
     console.print(f"[bold]generated {len(samples)} sample(s)[/bold]")
 
+    # Opik returns full DatasetItem objects ({id, source, data, ...}). Unwrap
+    # to flat item dicts before insert_dataset_items re-wraps, otherwise the
+    # real fields end up nested at data.data.<field>.
+    flat = [{"id": s.get("id"), **(s.get("data") or {})} for s in samples]
+
     if dry_run:
-        preview = samples[: min(3, len(samples))]
+        preview = flat[: min(3, len(flat))]
         console.print(json.dumps(preview, indent=2, default=str))
         console.print(
             "[yellow]dry-run — nothing persisted. Re-run without --dry-run to insert.[/yellow]"
         )
         return
 
-    if not samples:
+    if not flat:
         console.print("[yellow]no samples generated — nothing to persist.[/yellow]")
         raise typer.Exit(code=1)
 
-    client.insert_dataset_items(dataset_name, samples)
+    client.insert_dataset_items(dataset_name, flat)
     base = settings.opik_url.rstrip("/")
-    console.print(f"[green]inserted {len(samples)} item(s) into {dataset_name}[/green]")
+    console.print(f"[green]inserted {len(flat)} item(s) into {dataset_name}[/green]")
     if base:
         console.print(f"  {base}/datasets/{dataset_id}")
 
