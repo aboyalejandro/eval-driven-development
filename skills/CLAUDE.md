@@ -10,13 +10,12 @@ Eval-Driven Development is split into a router + five focused sub-skills. Each `
 | [`edd:scope-agent`](scope-agent/SKILL.md) | new agent, or agent source changed | `.edd/promises.md`, `regressions.txt` |
 | [`edd:scope-evals`](scope-evals/SKILL.md) | promise inventory exists but Opik project lacks the judges | `.edd/evaluator-plan.md`, `_local/create_evaluators.py`, judges in Opik |
 | [`edd:run`](run/SKILL.md) | Mode 1 (quick analysis) or Mode 2 Phase 1 (inner loop) | `scenarios.txt`, sim-tagged traces, score table or inline trace report |
-| [`edd:experiment`](experiment/SKILL.md) | Mode 2 Phase 2 — durable dataset + experiment in Opik UI | Opik dataset (`<project>-<topic>-v<N>`), experiment, optional optimization timeline |
-| [`edd:optimisation`](optimisation/SKILL.md) | Mode 3 — targeted prompt optimization against one evaluator | post-fix experiment on a shared optimization timeline (3A) or studio trials (3B) |
+| [`edd:experiment`](experiment/SKILL.md) | Mode 2 Phase 2 — durable dataset + experiment in Opik UI | Opik dataset (`<project>-<topic>-v<N>`), experiment with scorecard |
 
 ## Pipeline DAG
 
 ```
-scope-agent ──► scope-evals ──► run ──► experiment ──► optimisation
+scope-agent ──► scope-evals ──► run ──► experiment
                                   │
                                   └─► (stop here for Mode 1 / most branch work)
 ```
@@ -29,28 +28,24 @@ All sub-skills read/write `.edd/session.json` (gitignored). Keys:
 
 | Key | Set by | Consumed by |
 |---|---|---|
-| `mode`, `aggression` | router | run, experiment, optimisation |
-| `project` | router (asked) | scope-evals, run, experiment, optimisation |
-| `topic` | router (derived from hypothesis) | experiment, optimisation (naming) |
-| `branch_tag` | router (from git branch) | run, experiment, optimisation |
-| `dataset_name` | experiment | optimisation |
-| `experiment_name`, `optimization_name` | experiment, optimisation | inspect / handoff |
+| `mode`, `aggression` | router | run, experiment |
+| `project` | router (asked) | scope-evals, run, experiment |
+| `topic` | router (derived from hypothesis) | experiment (naming) |
+| `branch_tag` | router (from git branch) | run, experiment |
+| `dataset_name`, `experiment_name` | experiment | inspect / handoff |
 
 ## Pipeline anti-patterns
 
 Global rules — apply across every sub-skill. Skill-specific anti-patterns live inside each SKILL.md.
 
 - **Re-deriving cached outputs every session.** `regressions.txt` and Opik judges persist. Check timestamps and re-run scope-* only when source has changed.
-- **Optimization timelines spanning unrelated topics.** One `--optimization-name` per topic. Mixing topics on one timeline makes the Opik UI illegible.
 - **`edd:experiment` before `edd:run` is green.** Judges that misfire on 5 traces will misfire on 500 — find that out cheap.
-- **Co-mutating multiple prompt sections in one optimization run.** Attribution dies. One change per variant.
 - **Dataset rewrite in place.** New item shape ⇒ new version. Cross-version comparisons are noise.
 
 ## Stopping rules
 
 - **Two prompt iterations on the same red judge ⇒ stop tweaking, widen the search.** The next thing to question is the evaluator, the dataset, or the underlying behavior model — not the prompt phrasing. See [`references/failure-modes.md`](../references/failure-modes.md) for prompt-iteration vs judge-noise distinction.
 - **Score-table green on regressions.txt ⇒ promote to experiment** (Mode 2) **or ship** (Mode 1).
-- **Optimization delta ≥ 0.1 with no regression elsewhere ⇒ keep.** Below ⇒ roll back.
 
 ## Naming conventions
 
@@ -58,8 +53,7 @@ Global rules — apply across every sub-skill. Skill-specific anti-patterns live
 |---|---|---|
 | Trace branch tag | `sim-<git-branch>` | Auto-stamped by `edd run`; join key for `edd-build` |
 | Dataset | `<project>-<topic>-v<N>` | Bump `<N>` only when item shape changes |
-| Experiment | derived from dataset + variant (`<topic>-baseline`, `<topic>-post-fix`) | Set via `--experiment-name` |
-| Optimization | `<topic>-baseline-vs-fix` or `<topic>-baseline-vs-v2` | One per topic; pass via `--optimization-name` |
+| Experiment | derived from dataset + variant (`<topic>-baseline`, `<topic>-v2`) | Set via `--experiment-name` |
 
 All names are minted at runtime from session state — never pre-planned by the user.
 

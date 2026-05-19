@@ -1,6 +1,6 @@
 ---
 name: edd
-description: Eval-Driven Development router — picks the mode and dispatches. Asks two questions (mode 1/2/3, aggression 1/2/3), writes `.edd/session.json`, hands off to one of the phase skills. Use this when the user wants an eval workflow but hasn't named a phase. Skill-specific work belongs in `edd:scope-agent`, `edd:scope-evals`, `edd:run`, `edd:experiment`, or `edd:optimisation`.
+description: Eval-Driven Development router — picks the mode and dispatches. Asks two questions (mode 1/2, aggression 1/2/3), writes `.edd/session.json`, hands off to one of the phase skills. Use this when the user wants an eval workflow but hasn't named a phase. Skill-specific work belongs in `edd:scope-agent`, `edd:scope-evals`, `edd:run`, or `edd:experiment`.
 ---
 
 # edd — router
@@ -14,9 +14,8 @@ After changes to prompts, tool surface, skills, model routing, or memory injecti
 ## Ask the user — two questions only
 
 1. **Mode** — which mode do you want to run?
-   - `1` — Quick trace analysis (no Opik UI, Claude Code reads traces inline) → `edd:run`
-   - `2` — Dataset + experiment (full inner + outer loop, results in Opik UI) → `edd:run` then `edd:experiment`
-   - `3` — Optimization run (targeted prompt change → optimization studio) → `edd:optimisation`
+   - `1` — Quick trace analysis or sim-only scoring (no Opik UI, Claude Code reads traces inline, optional `edd score` for judge results) → `edd:run`
+   - `2` — Dataset + experiment (full inner + outer loop, durable scorecard in Opik UI) → `edd:run` then `edd:experiment`
 
 2. **Aggression level** — how hard should the scenarios push the agent?
    - `1` — Harness validation: normal user flows, exact trigger phrases, happy paths
@@ -25,7 +24,7 @@ After changes to prompts, tool surface, skills, model routing, or memory injecti
 
 ## Persist session state
 
-Write `.edd/session.json` with the keys listed in [`skills/CLAUDE.md`](../CLAUDE.md#shared-session-state). Mint `topic` from the user hypothesis (≤5-word kebab slug); leave `dataset_name` / `experiment_name` / `optimization_name` null — sub-skills fill those.
+Write `.edd/session.json` with the keys listed in [`skills/CLAUDE.md`](../CLAUDE.md#shared-session-state). Mint `topic` from the user hypothesis (≤5-word kebab slug); leave `dataset_name` / `experiment_name` null — sub-skills fill those.
 
 ## Dispatch table
 
@@ -33,7 +32,6 @@ Write `.edd/session.json` with the keys listed in [`skills/CLAUDE.md`](../CLAUDE
 |---|---|---|---|
 | 1 | Light (just regressions.txt) | `edd:run` | done |
 | 2 | Full (promises + evaluators) | `edd:run` → score green | `edd:experiment` |
-| 3 | Full + one target evaluator | `edd:run` | `edd:optimisation` |
 
 **Always check first:**
 - `regressions.txt` exists at repo root → scope-agent already done; skip unless agent source changed
@@ -43,7 +41,7 @@ If either is stale, run `edd:scope-agent` and/or `edd:scope-evals` before `edd:r
 
 ## Discovery rule — derive, don't ask
 
-Never ask the user for evaluator names, dataset names, experiment names, or optimization names. Derive them per [naming conventions](../CLAUDE.md#naming-conventions); pull dimensions from `edd:scope-agent` + `edd:scope-evals` outputs.
+Never ask the user for evaluator names, dataset names, or experiment names. Derive them per [naming conventions](../CLAUDE.md#naming-conventions); pull dimensions from `edd:scope-agent` + `edd:scope-evals` outputs.
 
 ## Next
 

@@ -6,9 +6,9 @@ Single source of truth for Opik API access and environment-variable reads. Both 
 
 | File | Role |
 |---|---|
-| `opik_client.py` | `OpikClient` — narrow REST wrapper (traces, datasets, experiments, evaluators, optimizations) |
+| `opik_client.py` | `OpikClient` — narrow REST wrapper (traces, datasets, experiments, evaluators) |
 | `settings.py` | `Settings` dataclass — read-only snapshot of env vars taken at import time |
-| `session.py` | `.edd/session.json` reader + branch guard + tag derivation. `assert_active_branch()` refuses main/master so traces don't tag `sim-main`; `session_tags()` propagates `topic`/`mode`/`aggression` onto datasets, experiments, optimizations |
+| `session.py` | `.edd/session.json` reader + branch guard + tag derivation. `assert_active_branch()` refuses main/master so traces don't tag `sim-main`; `session_tags()` propagates `topic`/`mode`/`aggression` onto datasets and experiments |
 | `__init__.py` | Re-exports `OpikClient` and `settings` singleton |
 
 ## `OpikClient` surface
@@ -19,7 +19,6 @@ Methods exist for **every** endpoint the framework needs and nothing else. Categ
 - **Evaluators** — `get_evaluators` (list automation rules), `trigger_evaluator` (manual run)
 - **Datasets** — `get_dataset_by_name`, `upsert_dataset_items`, `get_dataset_items_with_experiment_outputs`
 - **Experiments** — `create_experiment` (pre-minted id), `add_experiment_items`
-- **Optimizations** — `get_optimization_by_name`, `upsert_optimization`, `finalize_optimization`
 
 If you need an endpoint that isn't here, **add the method to this class**. Do not sprinkle `httpx` calls across other modules.
 

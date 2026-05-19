@@ -126,13 +126,12 @@ same shape is fine.
 - **Hand-curated golden outputs.** The judge scores against the agent's
   behavior, not against a baked-in answer. Use real sim traces.
 - **One huge dataset across topics.** Per-topic datasets keep failures
-  surgical and let optimization timelines stay legible.
+  surgical and the experiment scorecards legible.
 - **Skipping the trace link.** Without `source_trace_id` the experiment
   scores get orphaned from the actual conversation — debugging is guesswork.
 
 ## See also
 
-- [`experiment-grouping.md`](experiment-grouping.md) — wrap multiple dataset versions under a timeline
 - [`evaluator-selection.md`](evaluator-selection.md) — pick the evaluator before designing the dataset shape
 - [`trace-enrichment.md`](trace-enrichment.md) — extractor depends on enrichment writing `metadata.*`
 - [`../skills/experiment/SKILL.md`](../skills/experiment/SKILL.md) — skill that runs `edd-build`

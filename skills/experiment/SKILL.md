@@ -1,6 +1,6 @@
 ---
 name: experiment
-description: Promote sim-tagged traces into a durable Opik dataset + experiment with a UI scorecard. Outer loop of the eval pipeline. Use when the score must outlive the branch — cross-time comparison, baseline for an optimizer, reviewer handoff. Invoke as `edd:experiment` or when the user says "build dataset", "run experiment", "scoreboard in Opik UI", "outer loop". For *targeted prompt iteration on one judge*, see `edd:optimisation`.
+description: Promote sim-tagged traces into a durable Opik dataset + experiment with a UI scorecard. Outer loop of the eval pipeline. Use when the score must outlive the branch — cross-time comparison, reviewer handoff. Invoke as `edd:experiment` or when the user says "build dataset", "run experiment", "scoreboard in Opik UI", "outer loop".
 ---
 
 # edd:experiment — dataset → experiment → inspect
@@ -18,8 +18,7 @@ Mode 2 Phase 2 of the eval pipeline. Promotes the inner-loop score into a durabl
 ## When to invoke
 
 - comparing two prompt variants on the same inputs
-- iterating across days and needing a timeline view
-- producing a baseline a later optimizer loop will run against
+- iterating across days and needing a persistent scorecard
 - handing the score off to a reviewer who wasn't in the inner loop
 
 ## Phase A — Pick the evaluator
@@ -71,14 +70,12 @@ edd-run \
   --evaluator "<schema-name-a>,<schema-name-b>" \
   --description "<hypothesis — what changed and what we expect>" \
   --branch-tag sim-$(git rev-parse --abbrev-ref HEAD) \
-  [--optimization-name <topic>-baseline-vs-v2] \
-  [--optimization-description "<reused on first upsert of this optimization>"] \
   [--tag <extra-tag>] \
   [--score-timeout 300] \
   [--dry-run]
 ```
 
-`--description` is required and surfaces on the Opik experiment card. `--optimization-description` is recorded when the optimization is first created and reused for later variants on the same timeline.
+`--description` is required and surfaces on the Opik experiment card.
 
 This:
 1. Triggers each evaluator on every linked trace
@@ -86,7 +83,7 @@ This:
 3. Creates the experiment with model + branch + evaluator metadata
 4. Copies scores onto experiment items
 
-Wrap under `--optimization-name` when you want to compare runs on a shared timeline — see [references/experiment-grouping.md](../../references/experiment-grouping.md). Write `experiment_name` and `optimization_name` to `.edd/session.json`.
+Write `experiment_name` to `.edd/session.json`.
 
 ## Phase F — Inspect + iterate
 
@@ -104,7 +101,7 @@ Classify failures via [references/failure-modes.md](../../references/failure-mod
 
 | Class | Action |
 |---|---|
-| prompt issue | fix prompt/skill/tool, re-run Phase E (same dataset, same optimization → new experiment lands on the timeline) |
+| prompt issue | fix prompt/skill/tool, re-run Phase E against the same dataset for a fresh experiment |
 | dataset issue | patch scenarios, rebuild dataset (Phase D), **new version** — bump `v<N>` |
 | evaluator issue | back to [`edd:scope-evals`](../scope-evals/SKILL.md), recalibrate, re-run Phase E |
 | flaky / model-bound | tag and skip |
@@ -116,8 +113,8 @@ Apply the [stopping rules](../CLAUDE.md#stopping-rules) — two prompt iteration
 - Running an experiment without an evaluator — "I want a scoreboard" is not an evaluator; pick the dimension first.
 - Skipping `--dry-run` — bad extractor + real write = polluted dataset.
 
-See also: [pipeline anti-patterns](../CLAUDE.md#pipeline-anti-patterns) (global rules, including dataset rewrite-in-place and optimization-name span).
+See also: [pipeline anti-patterns](../CLAUDE.md#pipeline-anti-patterns) (global rules, including dataset rewrite-in-place).
 
 ## Next
 
-→ Optimization timeline shows persistent failures on one dimension → [`edd:optimisation`](../optimisation/SKILL.md).
+→ Inspect digest surfaces persistent failures on one dimension → fix the prompt / dataset / evaluator and re-run Phase E for a fresh comparison experiment.

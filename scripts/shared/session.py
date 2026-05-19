@@ -50,7 +50,7 @@ def assert_active_branch(allow_main: bool = False) -> str:
 
 
 def session_tags() -> list[str]:
-    """Tags derived from `.edd/session.json` — propagated to dataset / experiment / optimization."""
+    """Tags derived from `.edd/session.json` — propagated to dataset and experiment."""
     s = load_session()
     tags: list[str] = []
     if t := s.get("topic"):

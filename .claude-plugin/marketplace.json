@@ -5,8 +5,8 @@
     {
       "name": "edd",
       "source": "./",
-      "description": "Eval-Driven Development — split skills for scoping agents, running scenarios, building datasets, running experiments, and optimizing prompts against Opik judges",
-      "version": "2.0.0"
+      "description": "Eval-Driven Development — split skills for scoping agents, running scenarios, building datasets, and running experiments against Opik judges",
+      "version": "3.0.0"
     }
   ]
 }

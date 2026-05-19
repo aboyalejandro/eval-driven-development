@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""edd-run — dataset → experiment, optionally under an optimization. See scripts/simulation/CLAUDE.md."""
+"""edd-run — dataset → experiment with judge scores. See scripts/simulation/CLAUDE.md."""
 
 import json
 import time
@@ -65,32 +65,6 @@ def _poll_scores(
     return scores
 
 
-def _resolve_optimization(
-    client: OpikClient,
-    name: str,
-    dataset_id: str,
-    dataset_name: str,
-    objective: str,
-    description: str | None = None,
-    tags: list[str] | None = None,
-) -> str:
-    """Find or create an optimization group, returning its id."""
-    existing = client.find_optimization(name, dataset_id)
-    if existing:
-        return existing["id"]
-    opt_id = str(uuid.uuid7())
-    client.upsert_optimization(
-        dataset_name=dataset_name,
-        objective_name=objective,
-        status="running",
-        optimization_id=opt_id,
-        name=name,
-        description=description,
-        tags=tags,
-    )
-    return opt_id
-
-
 def _auto_experiment_name(dataset_name: str) -> str:
     """Generate a unique experiment name from dataset name + timestamp + short hash."""
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
@@ -116,26 +90,13 @@ def main(
         "--description",
         help="Required. Short summary of this experiment (hypothesis + what changed).",
     ),
-    optimization_name: str | None = typer.Option(
-        None,
-        "--optimization-name",
-        help="If set, experiment is grouped under this optimization timeline.",
-    ),
-    optimization_description: str | None = typer.Option(
-        None,
-        "--optimization-description",
-        help="Description applied when the optimization is first created. Reused for baseline + later variants.",
-    ),
     extra_tag: list[str] = typer.Option(
         [],
         "--tag",
-        help="Extra tag for experiment + optimization. Repeatable. Stacks on top of branch-tag + session tags.",
+        help="Extra tag for the experiment. Repeatable. Stacks on top of branch-tag + session tags.",
     ),
     score_timeout: int = typer.Option(
         300, "--score-timeout", help="Seconds to wait for judge to finish per batch."
-    ),
-    finalize_optimization: bool = typer.Option(
-        False, "--finalize-optimization", help="Mark grouping optimization completed."
     ),
     allow_main: bool = typer.Option(
         False,
@@ -179,25 +140,12 @@ def main(
         "evaluators": found_names,
         "traces": len(trace_ids),
         "experiment_name": exp_name,
-        "optimization_name": optimization_name,
     }
     console.print(json.dumps(plan, indent=2))
     if dry_run:
         return
 
     shared_tags = [branch_tag, *session_tags(), *extra_tag]
-    opt_id = None
-    if optimization_name:
-        opt_id = _resolve_optimization(
-            client,
-            optimization_name,
-            dataset_id,
-            dataset_name,
-            found_names[0],
-            description=optimization_description,
-            tags=shared_tags,
-        )
-        console.print(f"optimization id={opt_id}")
 
     triggered_after = datetime.now(timezone.utc).isoformat()
     client.trigger_evaluation(project_id, trace_ids, [j["id"] for j in judges])
@@ -218,8 +166,6 @@ def main(
         "source": "edd",
         "branch": branch_tag,
     }
-    if opt_id:
-        metadata["optimization_id"] = opt_id
     sample_tid = trace_ids[0]
     spans = client.get_spans(project, sample_tid, size=10).get("content", [])
     for sp in spans:
@@ -234,7 +180,6 @@ def main(
         experiment_id=exp_id,
         project_id=project_id,
         description=description,
-        optimization_id=opt_id,
         metadata=metadata,
         tags=shared_tags,
     )
@@ -262,24 +207,12 @@ def main(
     )
     console.print(f"[green]experiment {exp_name}[/green] (id={exp_id})")
 
-    if finalize_optimization and opt_id:
-        client.upsert_optimization(
-            dataset_name=dataset_name,
-            objective_name=evaluator,
-            status="completed",
-            optimization_id=opt_id,
-            name=optimization_name,
-        )
-        console.print(f"optimization {opt_id} marked completed")
-
     base = settings.opik_url.rstrip("/")
     if base:
         console.print(f"  {base}/experiments/{exp_id}")
-        if opt_id:
-            console.print(f"  {base}/optimizations/{opt_id}")
 
-    # Machine-readable output — pipe with jq to extract experiment_id / optimization_id.
-    print(json.dumps({"experiment_id": exp_id, "optimization_id": opt_id}))
+    # Machine-readable output — pipe with jq to extract experiment_id.
+    print(json.dumps({"experiment_id": exp_id}))
 
 
 if __name__ == "__main__":
