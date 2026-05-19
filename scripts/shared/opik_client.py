@@ -322,10 +322,22 @@ class OpikClient:
         self,
         experiment_id: str,
         items: list[dict],
+        project_id: str,
         dataset_name: str = "",
         experiment_name: str = "",
     ) -> None:
-        """Items carry `dataset_item_id`, `trace_id`, `input`, `output`, `feedback_scores`."""
+        """Items carry `dataset_item_id`, `trace_id`, `input`, `output`, `feedback_scores`.
+
+        `project_id` is a contract assertion, not propagated in the body — it
+        confirms the caller went through `create_experiment(..., project_id=...)`.
+        Without that path, the bulk endpoint silently lazy-creates items into
+        Opik's Default Project.
+        """
+        if not project_id:
+            raise ValueError(
+                "project_id is required — bulk write without a project-scoped "
+                "experiment lazy-creates items into Opik's Default Project."
+            )
         # Opik 2.x: PUT (not POST); body requires datasetName + experimentName.
         self._request(
             "PUT",

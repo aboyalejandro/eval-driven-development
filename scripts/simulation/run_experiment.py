@@ -203,7 +203,11 @@ def main(
         if (it.get("data") or it).get("source_trace_id")
     ]
     client.create_experiment_items(
-        exp_id, bulk_items, dataset_name=dataset_name, experiment_name=exp_name
+        exp_id,
+        bulk_items,
+        project_id=project_id,
+        dataset_name=dataset_name,
+        experiment_name=exp_name,
     )
     console.print(f"[green]experiment {exp_name}[/green] (id={exp_id})")
 
