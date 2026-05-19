@@ -11,14 +11,22 @@ Eval-Driven Development is split into a router + five focused sub-skills. Each `
 | [`edd:scope-evals`](scope-evals/SKILL.md) | promise inventory exists but Opik project lacks the judges | `.edd/evaluator-plan.md`, `_local/create_evaluators.py`, judges in Opik |
 | [`edd:run`](run/SKILL.md) | Mode 1 (quick analysis) or Mode 2 Phase 1 (inner loop) | `scenarios.txt`, sim-tagged traces, score table or inline trace report |
 | [`edd:experiment`](experiment/SKILL.md) | Mode 2 Phase 2 — durable dataset + experiment in Opik UI | Opik dataset (`<project>-<topic>-v<N>`), experiment with scorecard |
+| [`edd:expand`](expand/SKILL.md) | Optional — AI-driven growth of an existing dataset (coverage gaps, adversarial variants) | More items in the seed dataset, targeting the underrepresented bucket |
 
 ## Pipeline DAG
 
 ```
-scope-agent ──► scope-evals ──► run ──► experiment
+scope-agent ──► scope-evals ──► run ──► experiment Phase D (build dataset)
+                                  │                  │
+                                  │                  ├──► expand (optional — AI growth)
+                                  │                  │           │
+                                  │                  │           ▼
+                                  │                  └──► experiment Phase E (judge) ──► inspect
                                   │
                                   └─► (stop here for Mode 1 / most branch work)
 ```
+
+**Hard ordering rule:** if you're going to expand, do it **before** Phase E. Judging a tiny seed and then expanding wastes LLM spend on a stale-shape scorecard; you'd have to re-judge to compare apples-to-apples. The expand step never sits between two judge runs.
 
 Each downstream skill checks for cached outputs from upstream and skips re-derivation when fresh.
 

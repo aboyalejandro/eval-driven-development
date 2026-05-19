@@ -17,7 +17,7 @@ Inside any Claude Code session:
 /plugin install edd@edd
 ```
 
-After install, every Claude Code session sees `/edd:edd`, `/edd:scope-agent`, `/edd:scope-evals`, `/edd:run`, `/edd:experiment`.
+After install, every Claude Code session sees `/edd:edd`, `/edd:scope-agent`, `/edd:scope-evals`, `/edd:run`, `/edd:experiment`, `/edd:expand`.
 
 **Note:** symlinking the repo into `~/.claude/plugins/` does **not** auto-enable — the marketplace + install flow is the supported path.
 
@@ -87,6 +87,7 @@ Or skip the router and call a phase directly:
 /edd:scope-evals     # create missing Opik judges
 /edd:run             # inner loop (optional `edd score` for sim-only judge results)
 /edd:experiment      # outer loop (Opik UI scorecard)
+/edd:expand          # optional — grow the dataset with AI variants targeted at coverage gaps
 ```
 
 See [`skills/CLAUDE.md`](skills/CLAUDE.md) for the full DAG and per-skill details.

@@ -246,6 +246,41 @@ class OpikClient:
                 break
         return out
 
+    def expand_dataset(
+        self,
+        dataset_id: str,
+        model: str,
+        sample_count: int = 10,
+        preserve_fields: list[str] | None = None,
+        variation_instructions: str | None = None,
+        custom_prompt: str | None = None,
+        max_completion_tokens: int | None = None,
+    ) -> list[dict]:
+        """Generate synthetic dataset samples via Opik's AI expansion endpoint.
+
+        Returns the list of generated `DatasetItem` objects — each carries
+        `{id, source, data, ...}` with the synthetic fields nested under
+        `data`. Caller unwraps before re-inserting via `insert_dataset_items`
+        to avoid double-wrapping. Mirrors the Opik UI's "Expand with AI"
+        two-step flow (generate → review → save). Requires Opik 2.x with
+        the expansion feature enabled.
+        """
+        body: dict = {"model": model, "sample_count": sample_count}
+        if preserve_fields:
+            body["preserve_fields"] = preserve_fields
+        if variation_instructions:
+            body["variation_instructions"] = variation_instructions
+        if custom_prompt:
+            body["custom_prompt"] = custom_prompt
+        if max_completion_tokens:
+            body["max_completion_tokens"] = max_completion_tokens
+        data = self._request(
+            "POST",
+            f"/v1/private/datasets/{dataset_id}/expansions",
+            json=body,
+        )
+        return data.get("generated_samples", [])
+
     # --- experiments ---
 
     def create_experiment(
