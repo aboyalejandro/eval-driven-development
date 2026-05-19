@@ -1,11 +1,15 @@
 ---
 name: run
-description: Fire scenarios at the agent and read the score table. Mode 1 reads traces inline with no judges; Mode 2 Phase 1 triggers manual-fire judges that `edd:scope-evals` already created and prints the per-dimension table. Generates `scenarios.txt` at session aggression level; branches on whether trace enrichment runs between emit and score. Invoke as `edd:run` or when the user says "run scenarios", "score traces", "fire judges", "edd inner loop". For *creating* judges, see `edd:scope-evals`.
+description: Fire scenarios at the agent. Mode 1 emits + tags traces for inline Claude analysis, with optional `edd score` to run judges and print the per-dimension table. Mode 2 emits + tags only — judges fire in `edd:experiment`, not here. A small smoke-judge-check (3–5 traces) verifies judges land before scaling. Generates `scenarios.txt` at session aggression level; branches on whether trace enrichment runs between emit and the smoke check. Invoke as `edd:run` or when the user says "run scenarios", "score traces", "fire judges", "edd inner loop". For *creating* judges, see `edd:scope-evals`.
 ---
 
-# edd:run — scenarios → traces → scores
+# edd:run — scenarios → traces → (optional) scores
 
-Inner loop of the eval pipeline. Covers Mode 1 (quick analysis) and Mode 2 Phase 1 (score table).
+Inner loop of the eval pipeline. Covers Mode 1 (quick analysis, judges optional) and Mode 2 Phase 1 (emit + tag + smoke-judge-check — no score-table iteration).
+
+## Scoring plane recap
+
+The experiment plane is the sole canonical judge plane in Mode 2 — trace-plane and experiment-plane scores are unsynced (see [`references/opik-endpoints.md#score-storage--two-planes-no-auto-sync`](../../references/opik-endpoints.md#score-storage--two-planes-no-auto-sync)). Iterating on a trace-plane score table during the inner loop and then re-firing judges at experiment time wastes spend on stale numbers nobody compares against. The smoke check is a cheap "do judges land at all?" probe, not a score-iteration loop.
 
 ## Preconditions
 
@@ -31,7 +35,7 @@ Do not duplicate `regressions.txt`. Scenarios target what the diff touches; regr
 
 ## Step 2 — Branch on mode
 
-### Mode 1 — Quick trace analysis (no judges)
+### Mode 1 — Quick trace analysis (judges optional)
 
 ```bash
 edd run scenarios.txt   # emit + tag, no judging
@@ -58,23 +62,25 @@ for t in traces:
     print('  tools:', meta.get('tools_called', []))
 ```
 
-Report findings in conversation. **Stop** unless the user asks for Mode 2 or 3.
+Report findings in conversation. **Optional Mode 1 scoring** — if the user wants a judge-backed score table without promoting to a dataset, run `edd score --since 10 --evaluators "<name-a>,<name-b>"` against the same trace window. Trace-plane scores landed by `edd score` are throwaway by design (won't reach experiment plane). **Stop** unless the user asks for Mode 2.
 
-### Mode 2 Phase 1 — Score with judges
+### Mode 2 Phase 1 — Emit + tag + smoke-judge-check
 
-Branch on whether enrichment is required (check `.edd/evaluator-plan.md` — if judges read `metadata.user_message` etc., yes):
+Mode 2 inner loop does **not** iterate on a score table. The experiment plane (Phase E in [`edd:experiment`](../experiment/SKILL.md)) is the sole judge plane. The inner loop's job is:
 
-**No enrichment needed (simple agents):**
-```bash
-edd run scenarios.txt --wait --evaluators "<name-a>,<name-b>"
-```
+1. **Emit** scenarios so traces exist to build a dataset from.
+2. **Enrich** if judges read `metadata.*` paths the runtime doesn't emit natively.
+3. **Smoke-judge-check** — fire judges on a tiny sample to verify they *land* (no missing variable paths, no "API key not configured" errors). Not for score iteration.
 
-**With enrichment (most multi-SDK runtimes):**
+For the smoke check, write a 3–5 line `scenarios.txt` (a subset of `regressions.txt` is fine — one per evaluator dimension is plenty), then:
+
 ```bash
 edd run scenarios.txt                                            # emit + tag, exit
-python _local/enrich_traces_<sdk>.py --since-minutes 5           # SDK-specific
-edd score --since 10 --evaluators "<name-a>,<name-b>"            # trigger + poll + print
+python _local/enrich_traces_<sdk>.py --since-minutes 5           # if your runtime needs it
+edd score --since 10 --evaluators "<name-a>,<name-b>"            # triggers + polls; bounded by the recent emit window
 ```
+
+Sample size is bounded by `scenarios.txt`, not by a `--limit` flag on `edd score` (none exists). Keep `scenarios.txt` small for the smoke; expand it once you regenerate for the experiment.
 
 Pick the enrichment script matching the SDK:
 - `enrich_traces.py` — Agno
@@ -83,34 +89,40 @@ Pick the enrichment script matching the SDK:
 
 The CLI tags every trace `sim-<branch>` — that tag is the join key for [`edd:experiment`](../experiment/SKILL.md).
 
-## Step 3 — Read the table
+**Smoke-check pass criteria** — each judge in the plan emitted a non-null score on at least one trace within the score timeout. If anything is silent, fix it now: check `/automations/evaluators/{id}/logs`, re-run enrichment, recalibrate the rubric. Cheaper than discovering it on a 200-trace experiment.
 
-Below 0.5 = real failure. Red cells print the judge's reason inline. See [references/score-reading.md](../../references/score-reading.md) for thresholds, judge biases, and non-determinism rules.
+**If the smoke check passes, you do not iterate the inner loop further.** Go to [`edd:experiment`](../experiment/SKILL.md) where the dataset gets built and the experiment plane becomes the comparison surface.
 
-For each red row:
-1. Open the trace at the printed Opik URL
-2. Classify via [references/failure-modes.md](../../references/failure-modes.md):
-   - **prompt issue** → fix prompt/skill/tool, re-run
-   - **dataset issue** → patch scenario, re-run
-   - **evaluator issue** → recalibrate judge (back to [`edd:scope-evals`](../scope-evals/SKILL.md))
-   - **flaky / model-bound** → tag and skip
+## Step 3 — Interpret what the run produced
+
+**Mode 1 inline trace read** — describe what you saw. If the user opted into `edd score` for Mode 1, the table prints; red cells print judge reasons inline. See [`references/score-reading.md`](../../references/score-reading.md) for thresholds and biases. Treat Mode 1 scores as one-shot signal — they don't roll up anywhere.
+
+**Mode 2 smoke check** — only the *landing* of scores matters, not their values. If a judge stayed null on every sample trace, classify via [`references/failure-modes.md`](../../references/failure-modes.md):
+
+- **evaluator issue** (missing variable paths, "no API key configured", rubric returns invalid JSON) → back to [`edd:scope-evals`](../scope-evals/SKILL.md), or fix enrichment, then re-smoke
+- **enrichment gap** (judge expects `metadata.X`, enrichment didn't populate it) → fix `_local/enrich_traces_<sdk>.py`, re-enrich, re-smoke
+- **flaky / model-bound** → recalibrate judge model in `_local/create_evaluators.py`
+
+Do **not** start tweaking the prompt-under-test from smoke scores — sample size is too small and there's no comparison plane yet.
 
 ## Step 4 — Stop condition
 
-- Mode 1: stop after reporting trace findings.
-- Mode 2: stop when the table is green. Otherwise apply the [stopping rules](../CLAUDE.md#stopping-rules).
+- Mode 1: stop after reporting trace findings (and optional one-shot score table).
+- Mode 2: stop when the smoke check confirms judges land; the *comparison* happens at the experiment plane.
 
-For most branch-level work, the inner loop is enough. Escalate to [`edd:experiment`](../experiment/SKILL.md) only when you need a durable record across time/people.
+For most branch-level work that needs a durable record, go straight to [`edd:experiment`](../experiment/SKILL.md) once the smoke check passes.
 
 ## Anti-patterns
 
 - Picking every judge — irrelevant judges drown signal with neutral 0.5s. Pick the ones the diff exercises.
 - Skipping enrichment when judges read `metadata.*` — judges get 0 because the paths are empty, not because the agent failed.
-- Editing scenarios mid-loop without re-running — last-write wins, prior scores stale.
+- **Iterating Mode 2 inner loop on a trace-plane score table.** Mode 2's scoring plane is the experiment, not the trace. Inner loop is emit + smoke-only; comparison happens after `edd:experiment` Phase E.
+- **Smoke checking on >20 traces.** It's a landing probe, not a digest. Larger samples burn judge spend for no extra signal.
+- Editing scenarios mid-loop without re-running — last-write wins, prior smoke results stale.
 
 See also: [pipeline anti-patterns](../CLAUDE.md#pipeline-anti-patterns) (global).
 
 ## Next
 
-- Mode 1 → done (use `edd score --evaluators "<name>"` if you want judge results without promoting to dataset)
-- Mode 2 + need a durable scoreboard → [`edd:experiment`](../experiment/SKILL.md)
+- Mode 1 → done (use `edd score --evaluators "<name>"` for an optional one-shot score table — results stay on the trace plane, no dataset created)
+- Mode 2 + smoke check passed → [`edd:experiment`](../experiment/SKILL.md)

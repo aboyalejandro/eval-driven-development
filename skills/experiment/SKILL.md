@@ -11,7 +11,7 @@ Mode 2 Phase 2 of the eval pipeline. Promotes the inner-loop score into a durabl
 
 - `.edd/session.json` has `project` and `branch_tag` (`sim-<git-branch>`)
 - `.edd/evaluator-plan.md` exists ([`edd:scope-evals`](../scope-evals/SKILL.md))
-- Inner loop is **green** ([`edd:run`](../run/SKILL.md)) — judges fire cleanly on a few traces
+- **Smoke-judge-check passed** in [`edd:run`](../run/SKILL.md) — every judge in the plan landed at least one score on the 3–5 trace sample. This is a harness probe, not a green score-table (Mode 2 doesn't have one). If anything is silent, fix it before scaling.
 - Sim batch tagged in the last few hours (re-run `edd:run` if stale)
 - venv active
 

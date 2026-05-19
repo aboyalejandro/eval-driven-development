@@ -58,11 +58,13 @@ Don't run experiments against an uncalibrated LLM judge — you'll chase noise. 
 
 Two modes for the same rule. Pick one per judge — don't mix.
 
-**Manual-trigger mode (setup inner loop default):** `enabled=false`, `sampling_rate=0.0`. The framework's `trigger_evaluation` ignores both flags and fires the judge on exactly the traces you point at. Use this when sim traffic is the only thing you want scored — keeps the project clean of stray scores from concurrent dev sessions and avoids double-counting (auto-sample + manual trigger on the same trace).
+**Manual-trigger mode (setup inner loop default):** `enabled=false`, `sampling_rate=1.0`. The framework's `trigger_evaluation` ignores both flags and fires the judge on exactly the traces you point at, so manual fires work regardless of `sampling_rate`. The reason to pre-stage `sampling_rate=1.0` rather than `0.0` is **graduation ergonomics**: when the rubric is calibrated and you want the judge watching prod, flipping `enabled=true` is the only change needed — no second config edit, no "I enabled it but nothing fires" foot-gun.
+
+While `enabled=false` the judge ignores stray traffic (concurrent dev sessions, prod traces in shared projects). The skill decides when to fire during inner loop / experiment.
 
 **Auto-sample mode (production-parity):** `enabled=true`, `sampling_rate=1.0` (or fractional). Opik scores every matching trace as it lands, including production traffic. Use when you want sim and prod scored by the same rubric and the project receives both kinds of traffic.
 
-Most teams start in manual-trigger mode for the inner loop, then enable auto-sampling per judge once the rubric is calibrated and they want it watching prod.
+Most teams start in manual-trigger mode for the inner loop, then flip `enabled=true` per judge once the rubric is calibrated and they want it watching prod.
 
 ## Step 5 — naming hygiene
 
