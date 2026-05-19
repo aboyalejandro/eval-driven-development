@@ -28,6 +28,7 @@ Base path is always `/v1/private/...`. Auth is the Bearer/raw token in the
 |---|---|---|
 | GET | `/datasets?name=<n>` | Resolve dataset id |
 | POST | `/datasets` | Create. Body: `{id (uuid7!), name, description?, project_name?, tags?}`. `project_name` scopes dataset to project in UI; without it, dataset is workspace-level and invisible in the project Datasets tab. |
+| PUT | `/datasets/{id}` | Update dataset metadata. Body `DatasetUpdate`: `name` **required** on every call (pass the current name even when only description/tags change), `description?` (max 255 chars), `visibility?` (`private`/`public`), `tags?`. Returns 204. |
 | DELETE | `/datasets/{id}` | Delete dataset |
 | PUT | `/datasets/items` | Upsert items. Each item shape: `{id (uuid7), source: "manual", data: {...fields...}}`. Flat item dicts return 422. |
 | GET | `/datasets/{id}/items` | Page raw items (no experiment join) |
