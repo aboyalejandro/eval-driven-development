@@ -89,6 +89,7 @@ Two strikes on a prompt edit is a signal to widen the search, not narrow it furt
 - **Counting a flicker as a strike** in the two-iterations rule. Strikes count *stable* reds across re-runs, not first-time reds.
 - **Fixing the prompt when the tool surface is broken.** No prompt edit repairs a missing tool call, wrong params, or an upstream API error. Check the trace tree first.
 - **Filing a judge as miscalibrated on one trace.** Calibration claims need ≥3 traces where the rubric disagrees with the actual content.
+- **Reading trace-plane scores for experiment comparisons.** Trace `feedback_scores` and experiment-item `feedback_scores` are unsynced storage planes — the trace can carry stale or post-hoc judge runs that never reached the experiment. For variant deltas, use the experiment-plane only ([`opik-endpoints.md`](opik-endpoints.md#score-storage--two-planes-no-auto-sync)).
 
 ## See also
 
