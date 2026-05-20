@@ -16,7 +16,7 @@ from rich.console import Console
 from setup.agent import run_scenario
 from setup.results import poll_scores, print_results
 from shared.opik_client import OpikClient
-from shared.session import assert_active_branch, session_tags
+from shared.session import assert_active_branch, load_session, session_tags
 from shared.settings import settings
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -60,14 +60,15 @@ def run(
     allow_main: bool = typer.Option(
         False,
         "--allow-main",
-        help="Permit emitting traces while on main/master. Default refuses — branch name is the tag.",
+        help="Permit emitting traces while on main/master (only applies when no tag in session.json).",
     ),
 ):
     """Run a message or a scenarios file."""
-    branch = assert_active_branch(allow_main=allow_main)
+    session = load_session()
+    tag = session.get("branch_tag") or assert_active_branch(allow_main=allow_main)
     scenarios = _load_scenarios(message_or_file)
     flag_targets = {n.strip() for n in evaluators.split(",")} if evaluators else set()
-    asyncio.run(_run(scenarios, project, wait, timeout, flag_targets, branch))
+    asyncio.run(_run(scenarios, project, wait, timeout, flag_targets, tag))
 
 
 async def _run(
@@ -76,7 +77,7 @@ async def _run(
     wait: bool,
     timeout: int,
     flag_targets: set[str],
-    branch: str,
+    tag: str,
 ) -> None:
     """Emit scenarios, tag traces, optionally trigger judges and poll scores."""
     # The agent under test owns its own OTEL → Opik tracing (see PREREQUISITES.md).
@@ -118,8 +119,8 @@ async def _run(
         )
     log.info("found %d traces", len(trace_ids))
 
-    # 5. Tag traces — branch name = topic = single identity tag.
-    tags = [branch, *session_tags()]
+    # 5. Tag traces — topic tag from session.json["branch_tag"], else git branch.
+    tags = [tag, *session_tags()]
     client.batch_update_traces(trace_ids, project, tags_to_add=tags)
     log.info("tagged: %s", ", ".join(tags))
 
