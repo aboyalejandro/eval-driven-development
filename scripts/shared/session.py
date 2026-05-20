@@ -50,16 +50,12 @@ def assert_active_branch(allow_main: bool = False) -> str:
 
 
 def session_tags() -> list[str]:
-    """Tags derived from `.edd/session.json` — propagated to dataset and experiment.
+    """Extra session tags beyond branch-tag.
 
-    Pattern: branch-tag + topic only. Mode and aggression belong in descriptions,
-    not tags — they explain context, not identity.
+    Branch name = topic = tag — `sim-<topic>` already encodes identity.
+    Returns empty; preserved for callers that may pass --tag extras.
     """
-    s = load_session()
-    tags: list[str] = []
-    if t := s.get("topic"):
-        tags.append(f"topic-{t}")
-    return tags
+    return []
 
 
 def branch_tag_warning(branch_tag: str) -> str | None:
