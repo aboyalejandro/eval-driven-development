@@ -122,13 +122,15 @@ def main(
 
     project_id = client.get_project_id(project)
 
-    items = client.stream_dataset_items(dataset_id)
-    trace_ids = [(it.get("data") or it).get("source_trace_id") for it in items]
+    def _tid(it: dict) -> str | None:
+        d = it.get("data") or it
+        return d.get("source_trace_id") or d.get("id")
+
+    items = list(client.stream_dataset_items(dataset_id))
+    trace_ids = [_tid(it) for it in items]
     trace_ids = [t for t in trace_ids if t]
     if not trace_ids:
-        console.print(
-            "[red]no source_trace_id on dataset items — rebuild dataset.[/red]"
-        )
+        console.print("[red]no trace id on dataset items — rebuild dataset.[/red]")
         raise typer.Exit(code=1)
 
     found_names = [client.evaluator_schema_name(j) for j in judges]
@@ -188,19 +190,17 @@ def main(
             "id": str(uuid.uuid7()),
             "experiment_id": exp_id,
             "dataset_item_id": (it.get("data") or it).get("id") or it.get("id"),
-            "trace_id": (it.get("data") or it).get("source_trace_id"),
+            "trace_id": _tid(it),
             "input": {"user_message": (it.get("data") or it).get("user_message", "")},
             "output": {
                 "assistant_response": (it.get("data") or it).get(
                     "assistant_response", ""
                 )
             },
-            "feedback_scores": scores_by_trace.get(
-                (it.get("data") or it).get("source_trace_id"), []
-            ),
+            "feedback_scores": scores_by_trace.get(_tid(it), []),
         }
         for it in items
-        if (it.get("data") or it).get("source_trace_id")
+        if _tid(it)
     ]
     client.create_experiment_items(
         exp_id,
