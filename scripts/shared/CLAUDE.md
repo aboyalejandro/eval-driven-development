@@ -17,7 +17,7 @@ Methods exist for **every** endpoint the framework needs and nothing else. Categ
 
 - **Traces** — `search_traces`, `batch_tag`, `get_feedback_scores`, `get_spans` (for run-time model lookup)
 - **Evaluators** — `get_evaluators` (list automation rules), `trigger_evaluator` (manual run)
-- **Datasets** — `get_dataset_by_name`, `upsert_dataset_items`, `get_dataset_items_with_experiment_outputs`, `expand_dataset` (AI synthetic generation)
+- **Datasets** — `get_dataset_by_name`, `upsert_dataset_items`, `get_dataset_items_with_experiment_outputs`
 - **Experiments** — `create_experiment` (pre-minted id), `add_experiment_items`
 
 If you need an endpoint that isn't here, **add the method to this class**. Do not sprinkle `httpx` calls across other modules.
