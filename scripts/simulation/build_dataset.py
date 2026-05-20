@@ -150,7 +150,7 @@ def main(
         if not item:
             dropped += 1
             continue
-        item.setdefault("id", str(uuid.uuid7()))
+        item["id"] = tr["id"]  # stable: same trace → same item id → idempotent upsert
         item["source_trace_id"] = tr["id"]
         items.append(item)
     console.print(f"extracted {len(items)} items, dropped {dropped}")

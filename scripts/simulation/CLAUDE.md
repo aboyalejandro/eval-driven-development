@@ -9,14 +9,13 @@ Backs `edd-build`, `edd-run`, `edd-inspect`. Promotes sim-tagged traces into a d
 | `build_dataset.py` | `edd-build` | Sim-tagged traces → Opik dataset items |
 | `run_experiment.py` | `edd-run` | Dataset → experiment with judge scores |
 | `inspect_experiment.py` | `edd-inspect` | Per-evaluator digest + failure surface |
-| `expand_dataset.py` | `edd-expand` | AI-driven dataset growth via Opik `/datasets/expand` |
 | `__init__.py` | — | Marker only |
 
 ## `edd-build`
 
 Reads traces tagged `--branch-tag sim-<branch>` from `--project`, runs an extractor on each, upserts items into `--dataset-name`.
 
-Default extractor reads `metadata.user_message` + `metadata.assistant_response`. Override with `--extractor module:function` for runtimes that emit different paths (write the function in `_local/<runtime>_extractor.py`).
+Default extractor reads `input.message` + `output.output` (native trace fields). Override with `--extractor module:function` for runtimes that emit different shapes (write the function in `_local/<runtime>_extractor.py`). The extractor should also pull `metadata.tools_called` and `metadata.tool_outputs` from enriched traces — see `_local/claude_extractor.py` for the pattern.
 
 **Always `--dry-run` first.** Prints planned items without writing — verify count and shape before committing to a real write.
 
@@ -39,17 +38,13 @@ Three things in one command:
 
 **Branch-tag warning.** Same `--allow-main` escape hatch as `edd-build`.
 
-## `edd-expand`
+## Dataset growth
 
-AI-driven growth of an existing dataset. Calls Opik's `/datasets/expand` (same primitive as the UI's "Expand with AI" button), receives generated samples, optionally persists via the same write path as `edd-build`.
+Grow a dataset by running more `edd run` scenarios — new traces → `edd-build` upserts by stable ID (trace ID = item ID). This is the correct Mode 2 path.
 
-**Pipeline position is fixed: run `edd-expand` between `edd-build` and `edd-run`, never after.** Judging a thin seed and then expanding wastes LLM judge spend on a stale scorecard you can't compare to the post-expansion one. If you already judged, bump the dataset version and rebuild before expanding.
+Opik's `/datasets/expand` endpoint (`edd-expand`) only supports OpenAI models and generates synthetic items without linked traces, so evaluators cannot score them. Do not use it for trace-based evaluation pipelines.
 
-Required: `--dataset-name`, `--model`, `--count`. Optional steering: `--variation-instructions` (free-form, gap-targeted) or `--custom-prompt` (full prompt override), `--preserve-field` (repeatable — fields whose pattern the LLM must keep). Add `--max-tokens` for Anthropic models.
-
-**Two-step contract** — `--dry-run` prints the first 3 samples to stdout without persisting; re-run without the flag to insert. Always `--dry-run` first; expansion costs LLM tokens and polluted datasets are hard to clean.
-
-The skill [`edd:expand`](../../skills/expand/SKILL.md) reads the seed dataset, the agent's promises, and the evaluator plan, then derives all params from the actual coverage gap. The CLI is mechanical.
+For generating scenario variations use `_local/expand_with_claude.py` (calls Claude SDK directly, inserts flat items). These items serve as new scenario seeds for the next `edd run` pass — run the agent against them to get real traces, then rebuild.
 
 ## `edd-inspect`
 
@@ -70,4 +65,4 @@ All three CLIs go through `shared.opik_client.OpikClient`. Do not call Opik REST
 ## Up one level
 
 - Engine: [../CLAUDE.md](../CLAUDE.md)
-- Skills that use this: [`edd:experiment`](../../skills/experiment/SKILL.md), [`edd:expand`](../../skills/expand/SKILL.md)
+- Skills that use this: [`edd:experiment`](../../skills/experiment/SKILL.md)

@@ -141,6 +141,78 @@ class OpikClient:
             evs = [e for e in evs if e.get("project_name") == project]
         return [n for n in (self.evaluator_schema_name(e) for e in evs) if n]
 
+    def delete_evaluators_by_name(self, names: list[str], project: str) -> int:
+        """Delete evaluator rules by schema name. Returns count deleted."""
+        evs = self.get_evaluators().get("content", [])
+        ids = [
+            e["id"] for e in evs
+            if e.get("project_name") == project
+            and self.evaluator_schema_name(e) in names
+        ]
+        if not ids:
+            return 0
+        deleted = 0
+        for eid in ids:
+            try:
+                self._request("DELETE", f"/v1/private/automations/evaluators/{eid}")
+                deleted += 1
+            except Exception:
+                pass
+        return deleted
+
+    def create_evaluator(
+        self,
+        name: str,
+        description: str,
+        rubric: str,
+        project_name: str,
+        model: str = "gpt-4o-mini",
+    ) -> dict:
+        """Create an LLM-as-judge evaluator rule. Idempotent — skips if name already exists."""
+        evs = self.get_evaluators().get("content", [])
+        project_evs = [e for e in evs if e.get("project_name") == project_name]
+        existing_names = [self.evaluator_schema_name(e) for e in project_evs]
+        if name in existing_names:
+            return {"skipped": True, "name": name}
+        project_id = self.get_project_id(project_name)
+        # Reuse the model already used in this project rather than defaulting.
+        existing_model = model
+        if project_evs:
+            existing_model = (
+                project_evs[0].get("code", {}).get("model", {}).get("name") or model
+            )
+        body = {
+            "name": name,
+            "type": "llm_as_judge",
+            "project_id": project_id,
+            "code": {
+                "schema": [
+                    {"name": name, "type": "INTEGER", "description": description}
+                ],
+                "messages": [
+                    {"role": "SYSTEM", "content": rubric.strip(), "string_content": True, "structured_content": False},
+                    {
+                        "role": "USER",
+                        "content": (
+                            "User message:\n{{input}}\n\n"
+                            "Agent response:\n{{output}}\n\n"
+                            "tools_called: {{tools_called}}"
+                        ),
+                        "string_content": True,
+                        "structured_content": False,
+                    },
+                ],
+                "model": {"name": existing_model, "temperature": 0.0},
+                "variables": {
+                    "input": "input.message",
+                    "output": "output.output",
+                    "tools_called": "metadata.tools_called",
+                    "tool_outputs": "metadata.tool_outputs",
+                },
+            },
+        }
+        return self._request("POST", "/v1/private/automations/evaluators", json=body)
+
     def trigger_evaluation(
         self, project_id: str, trace_ids: list[str], rule_ids: list[str]
     ) -> dict:
@@ -301,6 +373,7 @@ class OpikClient:
             "POST",
             f"/v1/private/datasets/{dataset_id}/expansions",
             json=body,
+            timeout=120.0,
         )
         return data.get("generated_samples", [])
 
