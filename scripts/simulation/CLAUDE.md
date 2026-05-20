@@ -15,7 +15,7 @@ Backs `edd-build`, `edd-run`, `edd-inspect`. Promotes branch-tagged traces into 
 
 Reads traces tagged `--branch-tag <branch>` from `--project`, runs an extractor on each, upserts items into `--dataset-name`.
 
-Default extractor reads `input.message` + `output.output` (native trace fields). Override with `--extractor module:function` for runtimes that emit different shapes (write the function in `_local/<runtime>_extractor.py`). The extractor should also pull `metadata.tools_called` and `metadata.tool_outputs` from enriched traces — see `_local/claude_extractor.py` for the pattern.
+Default extractor reads `metadata.user_message` + `metadata.assistant_response` (enrichment-normalized fields — same source evaluators read from). Override with `--extractor module:function` for runtimes that emit different shapes (write the function in `_local/<runtime>_extractor.py`). The extractor should also pull `metadata.tools_called` and `metadata.tool_outputs` from enriched traces — see `_local/claude_extractor.py` for the pattern.
 
 **Always `--dry-run` first.** Prints planned items without writing — verify count and shape before committing to a real write.
 

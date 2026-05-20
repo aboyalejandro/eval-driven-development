@@ -204,8 +204,8 @@ class OpikClient:
                 ],
                 "model": {"name": existing_model, "temperature": 0.0},
                 "variables": {
-                    "input": "input.message",
-                    "output": "output.output",
+                    "input": "metadata.user_message",
+                    "output": "metadata.assistant_response",
                     "tools_called": "metadata.tools_called",
                     "tool_outputs": "metadata.tool_outputs",
                 },

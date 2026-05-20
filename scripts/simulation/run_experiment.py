@@ -291,11 +291,11 @@ def main(
             "experiment_id": exp_id,
             "dataset_item_id": it.get("id"),
             "trace_id": _tid(it),
-            "input": {"user_message": (it.get("data") or it).get("user_message", "")},
-            "output": {
-                "assistant_response": (it.get("data") or it).get(
-                    "assistant_response", ""
-                )
+            "input": {"message": (it.get("data") or it).get("user_message", "")},
+            "output": {"output": (it.get("data") or it).get("assistant_response", "")},
+            "metadata": {
+                k: ((it.get("data") or it).get("trace_metadata") or {}).get(k, "")
+                for k in ("tools_called", "tool_outputs")
             },
             "feedback_scores": scores_by_trace.get(_tid(it), []),
         }
