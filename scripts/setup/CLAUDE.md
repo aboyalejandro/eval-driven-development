@@ -1,6 +1,6 @@
 # scripts/setup/ — inner loop
 
-Backs the `edd` CLI. Emits scenarios at the agent, tags traces with `sim-<branch>`, triggers manual judges, polls scores, renders the table.
+Backs the `edd` CLI. Emits scenarios at the agent, tags traces with `<branch>`, triggers manual judges, polls scores, renders the table.
 
 ## Files
 
@@ -22,19 +22,17 @@ Verifies Opik connectivity (`OPIK_URL` + `OPIK_API_KEY`) and that `AGENT_ENDPOIN
 - `--wait` + `--evaluators "<names>"`: emit, trigger judges immediately, poll, print table. **Only safe when judges can read raw trace shape — no enrichment step.**
 - Without `--wait`: emit + tag, return immediately. Caller is expected to run enrichment then `edd score`.
 
-**Branch guard.** `edd run` refuses to emit traces when the current git branch is `main` / `master` / detached — prevents accidental `sim-main` tagging. Override with `--allow-main` if legitimately needed.
+**Branch guard.** `edd run` refuses to emit traces when the current git branch is `main` / `master` / detached — prevents accidental main-branch tagging. Override with `--allow-main` if legitimately needed.
 
 **Tags applied to every emitted trace** (via `batch_update_traces`):
-- `run-<8-char run id>` — uniquely identifies one `edd run` invocation
-- `sim-<branch>` — join key for `edd-build`
-- `topic-<topic>`, `mode-<n>`, `aggression-<n>` — propagated from `.edd/session.json` when present (see [`shared/session.py`](../shared/CLAUDE.md))
+- `<branch-name>` — join key for `edd-build`; branch name = topic = single identity tag
 
 ### `edd score --since <minutes>`
-Triggers `--evaluators` on every trace tagged `sim-<branch>` within the time window, polls until scores land or timeout, prints the per-dimension table via `results.py`.
+Triggers `--evaluators` on every trace tagged `<branch-name>` within the time window, polls until scores land or timeout, prints the per-dimension table via `results.py`.
 
 ## Trace tagging convention
 
-`sim-<branch>` is **always** the join key between setup and simulation. If you fork the CLI, preserve this — `simulation/build_dataset.py` filters traces by this tag.
+`<branch-name>` is **always** the join key between setup and simulation. Branch name = topic = tag — if you fork the CLI, preserve this — `simulation/build_dataset.py` filters traces by this tag.
 
 ## Custom HTTP adapter (`_local/my_adapter.py`)
 

@@ -42,30 +42,29 @@ def assert_active_branch(allow_main: bool = False) -> str:
         )
     if branch in GUARDED_BRANCHES:
         raise SystemExit(
-            f"refusing to run on `{branch}` — feature branch required so "
-            f"traces tag as `sim-<branch>` instead of `sim-{branch}`. "
+            f"refusing to run on `{branch}` — topic branch required so "
+            f"traces tag as `<topic>` not `{branch}`. "
             "Pass --allow-main to override."
         )
     return branch
 
 
 def session_tags() -> list[str]:
-    """Extra session tags beyond branch-tag.
+    """Extra session tags beyond the branch tag.
 
-    Branch name = topic = tag — `sim-<topic>` already encodes identity.
-    Returns empty; preserved for callers that may pass --tag extras.
+    Branch name = topic = tag — branch already encodes identity.
+    Returns empty; preserved for callers that pass --tag extras.
     """
     return []
 
 
 def branch_tag_warning(branch_tag: str) -> str | None:
-    """Return warning string if `branch_tag` references main/master, else None."""
-    for guarded in GUARDED_BRANCHES:
-        if branch_tag.endswith(f"-{guarded}") or branch_tag == f"sim-{guarded}":
-            return (
-                f"branch-tag `{branch_tag}` references the `{guarded}` branch — "
-                "this usually means you forgot to check out a feature branch before "
-                "`edd run`. Continuing, but the experiment will mix with anything "
-                f"else tagged `sim-{guarded}`."
-            )
+    """Return warning string if `branch_tag` is main/master, else None."""
+    if branch_tag in GUARDED_BRANCHES:
+        return (
+            f"branch-tag `{branch_tag}` is `{branch_tag}` — "
+            "this usually means you forgot to check out a topic branch before "
+            "`edd run`. Continuing, but the experiment will mix with all other "
+            f"`{branch_tag}`-tagged traces."
+        )
     return None

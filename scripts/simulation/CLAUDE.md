@@ -22,7 +22,7 @@ Default extractor reads `metadata.user_message` + `metadata.assistant_response`.
 
 **Required: `--description "..."`.** Short summary of what the dataset captures (topic + hypothesis). Surfaces on the Opik dataset card and makes datasets searchable later.
 
-**Tags applied to the dataset:** `[branch_tag, *extra_tag]` — branch name = topic = tag. `sim-<topic>` is the single identity tag across traces, dataset, and experiment. Mode and aggression belong in `--description`.
+**Tags applied to the dataset:** `[branch_tag, *extra_tag]` — branch name = topic = tag. `<topic>` is the single identity tag across traces, dataset, and experiment. Mode and aggression belong in `--description`.
 
 **Branch-tag warning.** Prints a yellow warning when `--branch-tag` references `main` / `master`. Silence with `--allow-main`.
 

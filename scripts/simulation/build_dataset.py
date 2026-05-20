@@ -86,7 +86,7 @@ def main(
     branch_tag: str = typer.Option(
         ...,
         "--branch-tag",
-        help="Trace tag to filter on. Set by cli.py as `sim-<branch>`.",
+        help="Trace tag to filter on — branch name = topic = tag (set by `edd run`).",
     ),
     from_time: str | None = typer.Option(
         None,

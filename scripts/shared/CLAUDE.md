@@ -8,7 +8,7 @@ Single source of truth for Opik API access and environment-variable reads. Both 
 |---|---|
 | `opik_client.py` | `OpikClient` — narrow REST wrapper (traces, datasets, experiments, evaluators) |
 | `settings.py` | `Settings` dataclass — read-only snapshot of env vars taken at import time |
-| `session.py` | `.edd/session.json` reader + branch guard + tag derivation. `assert_active_branch()` refuses main/master so traces don't tag `sim-main`; `session_tags()` propagates `topic`/`mode`/`aggression` onto datasets and experiments |
+| `session.py` | `.edd/session.json` reader + branch guard. `assert_active_branch()` refuses main/master; `session_tags()` returns empty — branch name is the single identity tag |
 | `__init__.py` | Re-exports `OpikClient` and `settings` singleton |
 
 ## `OpikClient` surface

@@ -60,7 +60,7 @@ def run(
     allow_main: bool = typer.Option(
         False,
         "--allow-main",
-        help="Permit emitting traces while on main/master. Default refuses — avoids `sim-main` taint.",
+        help="Permit emitting traces while on main/master. Default refuses — branch name is the tag.",
     ),
 ):
     """Run a message or a scenarios file."""
@@ -118,8 +118,8 @@ async def _run(
         )
     log.info("found %d traces", len(trace_ids))
 
-    # 5. Tag traces — branch + run id + any session.json context (topic, mode, aggression).
-    tags = [f"run-{run_id}", f"sim-{branch}", *session_tags()]
+    # 5. Tag traces — branch name = topic = single identity tag.
+    tags = [branch, *session_tags()]
     client.batch_update_traces(trace_ids, project, tags_to_add=tags)
     log.info("tagged: %s", ", ".join(tags))
 
