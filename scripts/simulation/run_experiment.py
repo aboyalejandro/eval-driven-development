@@ -124,7 +124,7 @@ def main(
 
     def _tid(it: dict) -> str | None:
         d = it.get("data") or it
-        return d.get("source_trace_id") or d.get("id")
+        return d.get("source_trace_id") or it.get("id")
 
     items = list(client.stream_dataset_items(dataset_id))
     trace_ids = [_tid(it) for it in items]
@@ -189,7 +189,7 @@ def main(
         {
             "id": str(uuid.uuid7()),
             "experiment_id": exp_id,
-            "dataset_item_id": (it.get("data") or it).get("id") or it.get("id"),
+            "dataset_item_id": it.get("id"),
             "trace_id": _tid(it),
             "input": {"user_message": (it.get("data") or it).get("user_message", "")},
             "output": {
