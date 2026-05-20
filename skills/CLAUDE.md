@@ -64,6 +64,7 @@ Global rules — apply across every sub-skill. Skill-specific anti-patterns live
 | Trace branch tag | `sim-<git-branch>` | Auto-stamped by `edd run`; join key for `edd-build` |
 | Dataset | `<project>-<topic>-v<N>` | Bump `<N>` only when item shape changes |
 | Experiment | derived from dataset + variant (`<topic>-baseline`, `<topic>-v2`) | Set via `--experiment-name` |
+| Tag pattern | `[branch-tag, topic, *extra]` | Same across traces, dataset, experiment. Mode + aggression → `--description`, not tags. |
 
 All names are minted at runtime from session state — never pre-planned by the user.
 

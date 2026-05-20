@@ -50,15 +50,15 @@ def assert_active_branch(allow_main: bool = False) -> str:
 
 
 def session_tags() -> list[str]:
-    """Tags derived from `.edd/session.json` — propagated to dataset and experiment."""
+    """Tags derived from `.edd/session.json` — propagated to dataset and experiment.
+
+    Pattern: branch-tag + topic only. Mode and aggression belong in descriptions,
+    not tags — they explain context, not identity.
+    """
     s = load_session()
     tags: list[str] = []
     if t := s.get("topic"):
         tags.append(f"topic-{t}")
-    if (m := s.get("mode")) is not None:
-        tags.append(f"mode-{m}")
-    if (a := s.get("aggression")) is not None:
-        tags.append(f"aggression-{a}")
     return tags
 
 
