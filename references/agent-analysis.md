@@ -69,14 +69,14 @@ The distinction matters because baseline evaluators need calibration investment.
 
 ## How to run the agent
 
-This section covers the substack-author-agent, which runs as a unified FastAPI server serving three SDK implementations.
+This section covers the example-agent, which runs as a unified FastAPI server serving three SDK implementations.
 
 ### Startup
 
 ```bash
-cd ~/Desktop/Repos/substack-author-agent
+cd ~/Desktop/Repos/example-agent
 source .venv/bin/activate
-nohup python server.py > /tmp/substack-server.log 2>&1 &
+nohup python server.py > /tmp/example-server.log 2>&1 &
 # confirm it's up:
 curl http://localhost:7777/agents
 ```
@@ -96,10 +96,10 @@ All three accept: `{"message": "...", "session_id": "..."}` → `{"content": "..
 Update `.env` in the eval repo:
 ```
 AGENT_ENDPOINT=http://localhost:7777/agents/claude/runs   # or agno or openai
-EVAL_PROJECT=substack-author-agent
+EVAL_PROJECT=example-agent
 ```
 
-All three agents trace to the same Opik project (`substack-author-agent`).
+All three agents trace to the same Opik project (`example-agent`).
 
 ### Tracing per SDK
 

@@ -56,7 +56,7 @@ async def create_agent(session_id: str, run_id: str, context: dict | None = None
 
 Only override what differs — body shape, field names, auth, timeout, response parsing. Leave `AGENT_ADAPTER` unset when the generic default matches your agent (most REST agents do).
 
-The substack-author-agent (Agno, Anthropic SDK, OpenAI Agents SDK) all work with the generic default — verified with one trace each, no adapter needed.
+The example-agent (Agno, Anthropic SDK, OpenAI Agents SDK) all work with the generic default — verified with one trace each, no adapter needed.
 
 ### 2. Agent emits traces to Opik directly
 

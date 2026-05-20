@@ -18,14 +18,14 @@ Load `docs/DEMO_BRANCH.md`. Identify:
 ### 2. Fetch the target file
 
 ```bash
-gh api repos/aboyalejandro/substack-author-agent/contents/<path> --jq '.content' | base64 -d
+gh api repos/github-user/example-agent/contents/<path> --jq '.content' | base64 -d
 ```
 
 ### 3. Create a branch on the agent repo
 
 ```bash
-SHA=$(gh api repos/aboyalejandro/substack-author-agent/git/refs/heads/main --jq '.object.sha')
-gh api repos/aboyalejandro/substack-author-agent/git/refs \
+SHA=$(gh api repos/github-user/example-agent/git/refs/heads/main --jq '.object.sha')
+gh api repos/github-user/example-agent/git/refs \
   --method POST \
   --field ref="refs/heads/<topic>" \
   --field sha="$SHA"
@@ -37,13 +37,13 @@ Branch name = hypothesis topic = `<topic>` (e.g. `url-clarification`). Same tag 
 
 Get the file SHA:
 ```bash
-gh api repos/aboyalejandro/substack-author-agent/contents/<path> --jq '.sha'
+gh api repos/github-user/example-agent/contents/<path> --jq '.sha'
 ```
 
 Encode and push:
 ```bash
 CONTENT=$(python3 -c "import base64; print(base64.b64encode(open('/tmp/new_file.py','rb').read()).decode())")
-gh api repos/aboyalejandro/substack-author-agent/contents/<path> \
+gh api repos/github-user/example-agent/contents/<path> \
   --method PUT \
   --field message="fix: <one-line description>" \
   --field content="$CONTENT" \
@@ -55,7 +55,7 @@ gh api repos/aboyalejandro/substack-author-agent/contents/<path> \
 
 ```bash
 gh pr create \
-  --repo aboyalejandro/substack-author-agent \
+  --repo github-user/example-agent \
   --head <topic> \
   --base main \
   --title "<short title>" \
@@ -89,7 +89,7 @@ Edit `.edd/session.json` — update `branch_tag` and `dataset_name` for the new 
 {
   "mode": 2,
   "aggression": 2,
-  "project": "substack-author-agent",
+  "project": "example-agent",
   "branch_tag": "<topic>",
   "dataset_name": "<project>-<topic>-v1"
 }
