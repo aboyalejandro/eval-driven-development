@@ -16,6 +16,7 @@ Standalone markdown files. **Decision aids, not narrative docs** — each skill 
 | `dataset-design.md` | item shape, coverage targets, naming `<project>-<topic>-v<N>` | [`edd:experiment`](../skills/experiment/SKILL.md) |
 | `dataset-expansion.md` | when + how to grow a seed dataset with AI (`/datasets/expand`); preserve_fields + variation_instructions design | [`edd:expand`](../skills/expand/SKILL.md) |
 | `opik-endpoints.md` | REST scripts erroring on Opik API drift | [`shared/opik_client.py`](../scripts/shared/CLAUDE.md) |
+| `agent-pr-process.md` | creating a PR on the agent repo using EDD findings (hypothesis → branch → change → PR) | manual / cross-session recovery |
 
 ## Naming
 
@@ -42,6 +43,7 @@ There is no canonical order — load the file that matches the question you have
 | "Is `v2` of this dataset different enough to warrant a new version?" | `dataset-design.md` |
 | "I want more items in this dataset — what should expansion target?" | `dataset-expansion.md` |
 | "Opik just returned 404 on this endpoint" | `opik-endpoints.md` |
+| "How do I open a PR on the agent repo with EDD results?" | `agent-pr-process.md` |
 
 ## Up one level
 
