@@ -21,7 +21,7 @@ Default extractor reads `input.message` + `output.output` (native trace fields).
 
 **Required: `--description "..."`.** Short summary of what the dataset captures (topic + hypothesis). Surfaces on the Opik dataset card and makes datasets searchable later.
 
-**Tags applied to the dataset:** `[branch_tag, *session_tags(), *extra_tag]` where `session_tags()` reads `.edd/session.json` for `topic`/`mode`/`aggression`, and `--tag <value>` is repeatable.
+**Tags applied to the dataset:** `[branch_tag, *extra_tag]` — branch name = topic = tag. `<topic>` is the single identity tag across traces, dataset, and experiment. Mode and aggression belong in `--description`.
 
 **Branch-tag warning.** Prints a yellow warning when `--branch-tag` references `main` / `master`. Silence with `--allow-main`.
 
@@ -34,7 +34,7 @@ Three things in one command:
 
 **Required: `--description "..."`.** Surfaces on the Opik experiment card; the hypothesis lives here.
 
-**Tags applied to the experiment:** same shape as `edd-build` — `[branch_tag, *session_tags(), *extra_tag]`.
+**Tags applied to the experiment:** same shape as `edd-build` — `[branch_tag, *extra_tag]`.
 
 **Branch-tag warning.** Same `--allow-main` escape hatch as `edd-build`.
 

@@ -4,7 +4,6 @@
 import importlib
 import json
 import sys
-import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -86,7 +85,7 @@ def main(
     branch_tag: str = typer.Option(
         ...,
         "--branch-tag",
-        help="Trace tag to filter on. Set by cli.py as `sim-<branch>`.",
+        help="Trace tag to filter on — branch name = topic = tag (set by `edd run`).",
     ),
     from_time: str | None = typer.Option(
         None,
@@ -151,7 +150,6 @@ def main(
             dropped += 1
             continue
         item["id"] = tr["id"]  # stable: same trace → same item id → idempotent upsert
-        item["source_trace_id"] = tr["id"]
         items.append(item)
     console.print(f"extracted {len(items)} items, dropped {dropped}")
 

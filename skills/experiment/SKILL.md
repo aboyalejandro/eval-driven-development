@@ -59,7 +59,7 @@ edd-build \
 
 Default extractor reads `metadata.user_message` + `metadata.assistant_response`. Supply `--extractor module:function` if your runtime emits trace paths that differ.
 
-**Tags auto-applied:** `--branch-tag` + `topic` / `mode` / `aggression` from `.edd/session.json` + any `--tag` you pass. Branch-tag warning prints if it references `main`/`master` — pass `--allow-main` to silence.
+**Tags auto-applied:** `--branch-tag` + any `--tag` you pass. Branch name = topic = tag — `sim-<topic>` is the single identity across traces, dataset, and experiment. Mode and aggression go in `--description`. Branch-tag warning prints if it references `main`/`master` — pass `--allow-main` to silence.
 
 ## Phase D.5 — Expand for coverage (gate before Phase E)
 
