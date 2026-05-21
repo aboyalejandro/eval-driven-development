@@ -147,6 +147,17 @@ def main(
             "the traces."
         ),
     ),
+    score_before: str | None = typer.Option(
+        None,
+        "--score-before",
+        help=(
+            "ISO timestamp upper bound for resume mode. Required when judges "
+            "may have been re-fired between the original failure and the "
+            "resume — pins score selection to the original window so newer "
+            "scores from unrelated runs don't get attached to this experiment. "
+            "Pass the line `triggered_after` from the original log."
+        ),
+    ),
     allow_main: bool = typer.Option(
         False,
         "--allow-main",
@@ -201,14 +212,29 @@ def main(
     if resume_experiment:
         # Resume path: judges already scored, experiment row already created;
         # only the items-write failed. Read scores back from the traces.
+        # `score_before` upper-bounds score selection so a re-fire of judges
+        # between the original failure and the resume can't attach unrelated
+        # newer scores to this experiment.
         exp_id = resume_experiment
         console.print(
             f"[yellow]resuming experiment {exp_id} — skipping judge fire + "
             "create_experiment[/yellow]"
         )
-        scores_by_trace = {
-            tid: _latest_per_judge(client.get_trace_scores(tid)) for tid in trace_ids
-        }
+        if not score_before:
+            console.print(
+                "[yellow]--score-before not set; including the most recent "
+                "score per judge with no upper bound. If judges have been "
+                "re-fired since the original failure, pass --score-before "
+                "<original triggered_after> to scope back.[/yellow]"
+            )
+
+        def _select(tid: str) -> list[dict]:
+            scores = client.get_trace_scores(tid)
+            if score_before:
+                scores = [s for s in scores if s.get("created_at", "") <= score_before]
+            return _latest_per_judge(scores)
+
+        scores_by_trace = {tid: _select(tid) for tid in trace_ids}
         landed = sum(
             1
             for tid in trace_ids
