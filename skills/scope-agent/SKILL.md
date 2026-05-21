@@ -54,7 +54,25 @@ What did the team ship last sprint?
 
 `regressions.txt` is gitignored at the framework level — **commit it in your fork or working branch**. It persists across sessions and protects against regressions.
 
-## Step 4 — Update `.edd/session.json`
+## Step 4 — Lint the scenarios before writing
+
+Two checks every scenario (regressions + any `scenarios.txt` you'll author later) must pass. Both run before the file is final.
+
+### Check A — every scenario hits a named promise
+
+Walk each scenario message and identify the surface it exercises. Cross-reference against `.edd/promises.md`. If a scenario doesn't map to any line in that file, the scenario is testing capability the agent doesn't have — every judge will score 0, the experiment will look catastrophic, and the diagnosis will mislead. Drop it or open a tooling task; do not promote it to a regression.
+
+### Check B — flag unbounded plurals
+
+Read [references/scenario-design.md § Blast-radius hygiene](../../references/scenario-design.md#blast-radius-hygiene--cap-result-sets). Reject any scenario whose phrasing reads as unbounded:
+
+- contains `all`, `every`, `across the board`, or an unqualified plural noun (`articles`, `customers`, `tickets`)
+- asks to `rank`, `compare`, or `list` without a `top N` / `last N` / `last N days` anchor
+- searches without a result-count cap
+
+When you catch one, rewrite it with an explicit cap before saving. The agent will obediently fan out to 50+ tool calls otherwise, blowing trace span counts and judge context windows.
+
+## Step 5 — Update `.edd/session.json`
 
 If the router hasn't populated it yet, write minimal state:
 ```json
@@ -73,6 +91,8 @@ If the router hasn't populated it yet, write minimal state:
 - Writing 20+ regression scenarios — keep it ≤8. Coverage, not volume.
 - Including diff-specific scenarios — those live in `scenarios.txt`, not `regressions.txt`.
 - Skipping the inventory and jumping to scenarios — the inventory is what evaluator selection consumes.
+- Scenarios that don't map to any promise. Skipping Step 4 Check A produces 0.00 scorecards that look like prompt failures but are capability gaps.
+- Unbounded plurals ("show me all", "rank my X") — see Step 4 Check B and the blast-radius hygiene section in scenario-design.md.
 
 See also: [pipeline anti-patterns](../CLAUDE.md#pipeline-anti-patterns) (global).
 
