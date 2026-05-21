@@ -228,6 +228,20 @@ def score(
         raise typer.Exit(1)
 
 
+def _opik_config_url_override() -> str | None:
+    """Return `url_override` from `~/.opik.config` if the file exists."""
+    cfg = Path.home() / ".opik.config"
+    if not cfg.exists():
+        return None
+    import configparser
+
+    parser = configparser.ConfigParser()
+    parser.read(cfg)
+    if parser.has_option("opik", "url_override"):
+        return parser.get("opik", "url_override")
+    return None
+
+
 @app.command()
 def check():
     """Verify env vars + Opik reachable + agent reachable. Run before first invocation."""
@@ -238,6 +252,34 @@ def check():
         console.print(f"  [{'green' if ok else 'red'}]{'✓' if ok else '✗'}[/] {v}")
         if not ok:
             errors.append(v)
+
+    # Python version is informational — pyproject pins >=3.11 already.
+    import sys as _sys
+
+    console.print(
+        f"  [green]✓[/] Python {_sys.version_info.major}.{_sys.version_info.minor}"
+        f".{_sys.version_info.micro}"
+    )
+
+    # `~/.opik.config` precedence trap: if the user has a global config that
+    # points elsewhere than `OPIK_URL`, the *agent process* may resolve to
+    # a different Opik than `edd` (env vars beat the file in opik's own
+    # resolution, but only env vars *that the agent process inherits*).
+    global_override = _opik_config_url_override()
+    if global_override:
+        opik_url = os.environ.get("OPIK_URL") or ""
+        # Normalize trailing slash and `/api` suffix for comparison.
+        normalize = lambda u: u.rstrip("/").removesuffix("/api")
+        if normalize(global_override) != normalize(opik_url):
+            console.print(
+                f"  [yellow]![/] ~/.opik.config sets url_override="
+                f"{global_override!r} but OPIK_URL={opik_url!r} — the "
+                "agent process may resolve to a different Opik than this "
+                "CLI. Override per-process with OPIK_URL_OVERRIDE in the "
+                "agent's env, or delete the global config."
+            )
+        else:
+            console.print(f"  [green]✓[/] ~/.opik.config url_override matches OPIK_URL")
 
     if not errors:
         try:
