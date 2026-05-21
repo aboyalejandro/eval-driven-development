@@ -1,5 +1,7 @@
 # Eval-Driven Development for LLM Agents
 
+> ⚠️ **Active development.** This framework is under active iteration — APIs, skill bodies, and CLI flags will change without notice. **No remote/registry install yet.** Install locally as a Claude Code plugin from a cloned copy of this repo — see [`DEVELOPMENT.md`](DEVELOPMENT.md). Pin to a commit if you need stability.
+
 Tests tell you code runs. They don't tell you the agent is still good at its job.
 
 A prompt edit that fixes one behavior breaks three others silently. A model swap shifts response shape. Tool routing drifts after a schema change. None of this surfaces in CI — and most eval platforms can't catch it either, because they replay inputs against a prompt without running the real toolkit.

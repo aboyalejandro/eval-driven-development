@@ -9,7 +9,7 @@ Eval-Driven Development is split into a router + five focused sub-skills. Each `
 | [`edd:edd`](edd/SKILL.md) | top-level entry — user wants an eval workflow without naming a phase | `.edd/session.json`, dispatch to one below |
 | [`edd:scope-agent`](scope-agent/SKILL.md) | new agent, or agent source changed | `.edd/promises.md`, `regressions.txt` |
 | [`edd:scope-evals`](scope-evals/SKILL.md) | promise inventory exists but Opik project lacks the judges | `.edd/evaluator-plan.md`, `_local/create_evaluators.py`, judges in Opik |
-| [`edd:run`](run/SKILL.md) | Mode 1 (quick analysis, judges optional) or Mode 2 Phase 1 (emit + tag + smoke-judge-check) | `scenarios.txt`, sim-tagged traces, inline trace report (+ optional Mode 1 score table) |
+| [`edd:run`](run/SKILL.md) | Mode 1 (quick analysis, judges optional) or Mode 2 Phase 1 (emit + tag + smoke-judge-check) | `scenarios.txt`, branch-tagged traces, inline trace report (+ optional Mode 1 score table) |
 | [`edd:experiment`](experiment/SKILL.md) | Mode 2 Phase 2 — durable dataset + experiment, **sole judge plane** for comparison | Opik dataset (`<project>-<topic>-v<N>`), experiment with scorecard |
 
 ## Pipeline DAG
@@ -56,10 +56,10 @@ Global rules — apply across every sub-skill. Skill-specific anti-patterns live
 | Artifact | Pattern | Notes |
 |---|---|---|
 | Branch | `<topic>` (e.g. `url-clarification`) | Branch name = topic = tag. No `feat/` prefix. |
-| Trace branch tag | `sim-<topic>` | Auto-stamped by `edd run`; join key for `edd-build`. Single identity tag. |
+| Trace branch tag | `<topic>` | Auto-stamped by `edd run`; join key for `edd-build`. Single identity tag. |
 | Dataset | `<project>-<topic>-v<N>` | Bump `<N>` only when item shape changes |
 | Experiment | derived from dataset + variant (`<topic>-baseline`, `<topic>-v2`) | Set via `--experiment-name` |
-| Tag pattern | `[sim-<topic>, *extra]` | Branch name carries topic — no separate topic tag. Mode + aggression → `--description`. |
+| Tag pattern | `[<topic>, *extra]` | Branch name carries topic — no separate topic tag. Mode + aggression → `--description`. |
 
 All names are minted at runtime from session state — never pre-planned by the user.
 

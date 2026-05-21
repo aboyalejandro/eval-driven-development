@@ -30,7 +30,7 @@ def assert_active_branch(allow_main: bool = False) -> str:
     """Refuse to proceed unless on a non-default branch. Returns the branch name.
 
     Hard-fails when on `main`/`master` or detached HEAD — prevents
-    accidental `sim-main` traces. Pass `allow_main=True` to override.
+    accidental `main`-tagged traces. Pass `allow_main=True` to override.
     """
     branch = git_branch()
     if allow_main:

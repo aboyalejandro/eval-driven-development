@@ -19,7 +19,7 @@ For first-time setup steps see [`DEVELOPMENT.md`](DEVELOPMENT.md). For the integ
 
 ## Key constraints (gotchas not documented elsewhere)
 
-- `create_agent` must name the agent starting with `sim-{run_id}-` so traces are filterable by branch tag.
+- `create_agent` must name the agent starting with `{run_id}-` (which equals the branch tag) so traces are filterable by branch tag.
 - Don't inject context by concatenating into the user message — mirror how production traffic arrives.
 - `--dry-run` before every `edd-build` to verify the extractor shape.
 - Supply `--extractor module:function` when trace shape differs from defaults (`trace.input.user_message` / `trace.output.assistant_response`).

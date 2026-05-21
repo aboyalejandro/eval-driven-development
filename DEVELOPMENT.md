@@ -2,7 +2,12 @@
 
 How to wire `edd` (this repo) into another project on your machine so the `/edd:*` slash commands work in Claude Code and the `edd*` CLIs run from that project's venv.
 
-Replace `<edd-repo>` with the absolute path where you cloned this repo, and `<your-project>` with the project you're evaluating.
+Two placeholders to substitute throughout:
+
+- `<edd-repo>` — absolute path to **this** repo (the one you're reading now). From inside it: `pwd`. Example: `/Users/you/code/eval-driven-development`.
+- `<your-project>` — absolute path to the project you want to evaluate (the agent's repo).
+
+> Tip: paste the literal output of `pwd` — don't keep the angle brackets.
 
 ---
 
@@ -10,10 +15,17 @@ Replace `<edd-repo>` with the absolute path where you cloned this repo, and `<yo
 
 Claude Code discovers plugins via a **marketplace** (a manifest listing one or more plugins). The repo ships `.claude-plugin/marketplace.json` for this.
 
-Inside any Claude Code session:
+Inside any Claude Code session (substitute `<edd-repo>` with the absolute path from `pwd` above):
 
 ```
 /plugin marketplace add <edd-repo>
+/plugin install edd@edd
+```
+
+Concrete example:
+
+```
+/plugin marketplace add /Users/you/code/eval-driven-development
 /plugin install edd@edd
 ```
 

@@ -1,19 +1,19 @@
 # scripts/simulation/ — outer loop
 
-Backs `edd-build`, `edd-run`, `edd-inspect`. Promotes sim-tagged traces into a durable dataset, runs experiments against an evaluator, surfaces failures.
+Backs `edd-build`, `edd-run`, `edd-inspect`. Promotes branch-tagged traces into a durable dataset, runs experiments against an evaluator, surfaces failures.
 
 ## Files
 
 | File | CLI | Role |
 |---|---|---|
-| `build_dataset.py` | `edd-build` | Sim-tagged traces → Opik dataset items |
+| `build_dataset.py` | `edd-build` | Branch-tagged traces → Opik dataset items |
 | `run_experiment.py` | `edd-run` | Dataset → experiment with judge scores |
 | `inspect_experiment.py` | `edd-inspect` | Per-evaluator digest + failure surface |
 | `__init__.py` | — | Marker only |
 
 ## `edd-build`
 
-Reads traces tagged `--branch-tag sim-<branch>` from `--project`, runs an extractor on each, upserts items into `--dataset-name`.
+Reads traces tagged `--branch-tag <branch>` from `--project`, runs an extractor on each, upserts items into `--dataset-name`.
 
 Default extractor reads `input.message` + `output.output` (native trace fields). Override with `--extractor module:function` for runtimes that emit different shapes (write the function in `_local/<runtime>_extractor.py`). The extractor should also pull `metadata.tools_called` and `metadata.tool_outputs` from enriched traces — see `_local/claude_extractor.py` for the pattern.
 

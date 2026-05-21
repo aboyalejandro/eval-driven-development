@@ -58,7 +58,7 @@ What did the team ship last sprint?
 
 If the router hasn't populated it yet, write minimal state:
 ```json
-{ "topic": "<slug-from-hypothesis>", "branch_tag": "sim-<git-branch>" }
+{ "topic": "<slug-from-hypothesis>", "branch_tag": "<git-branch>" }
 ```
 
 ## Outputs

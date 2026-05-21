@@ -19,7 +19,7 @@ The experiment plane is the sole canonical judge plane in Mode 2 — trace-plane
 - For Mode 2: judges in Opik ([`edd:scope-evals`](../scope-evals/SKILL.md)); enrichment script in `_local/` if your trace shape needs it
 - venv active: `source scripts/.venv/bin/activate`
 - `edd check` passes
-- **On a feature branch, not `main` / `master`.** `edd run` refuses to emit traces from the default branch — prevents `sim-main` taint. If you intentionally want main, pass `--allow-main`.
+- **On a feature branch, not `main` / `master`.** `edd run` refuses to emit traces from the default branch — prevents `main`-branch taint on tagged traces. If you intentionally want main, pass `--allow-main`.
 
 ## Step 1 — Generate scenarios
 
@@ -87,7 +87,7 @@ Pick the enrichment script matching the SDK:
 - `enrich_traces_claude.py` — Anthropic SDK
 - `enrich_traces_openai.py` — OpenAI Agents SDK
 
-The CLI tags every trace `sim-<branch>` — that tag is the join key for [`edd:experiment`](../experiment/SKILL.md).
+The CLI tags every trace `<branch>` — that tag is the join key for [`edd:experiment`](../experiment/SKILL.md).
 
 **Smoke-check pass criteria** — each judge in the plan emitted a non-null score on at least one trace within the score timeout. If anything is silent, fix it now: check `/automations/evaluators/{id}/logs`, re-run enrichment, recalibrate the rubric. Cheaper than discovering it on a 200-trace experiment.
 

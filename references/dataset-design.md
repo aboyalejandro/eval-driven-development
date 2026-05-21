@@ -103,7 +103,7 @@ Start at 10–20 items for the first dry run. Ramp once the recipe works.
 `edd-build` keeps an item if:
 
 1. The trace carries the `--branch-tag` (set by `edd run` as
-   `sim-<branch>`).
+   `<branch>`).
 2. The trace start time is within `--from`.
 3. The extractor returns a dict (default extractor drops empty
    user/assistant strings).

@@ -40,7 +40,7 @@ async def _default_create_agent(
 
     class AgentProxy:
         def __init__(self) -> None:
-            self.name = f"sim-{run_id}-{settings.agent_name}"
+            self.name = f"{run_id}-{settings.agent_name}"
             self._session_id = session_id
             self._context = context or {}
 
@@ -88,7 +88,7 @@ async def run_scenario(
     context: dict | None = None,
     followups: list[str] | None = None,
 ) -> str:
-    session_id = f"sim-{run_id}-{uuid.uuid4().hex[:6]}"
+    session_id = f"{run_id}-{uuid.uuid4().hex[:6]}"
     agent = await create_agent(session_id, run_id, context=context)
 
     response = await agent.arun(message)

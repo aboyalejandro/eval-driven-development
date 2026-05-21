@@ -38,7 +38,7 @@ AGENT_ENDPOINT = os.getenv("AGENT_ENDPOINT")
 async def create_agent(session_id: str, run_id: str, context: dict | None = None):
     class AgentProxy:
         def __init__(self):
-            self.name = f"sim-{run_id}"
+            self.name = f"{run_id}"
             self._session_id = session_id
 
         async def arun(self, message: str):
