@@ -45,6 +45,20 @@ def _default_extractor(trace: dict) -> dict | None:
     return item
 
 
+def _default_drop_reason(trace: dict) -> str:
+    """Surface why `_default_extractor` returned None for this trace."""
+    meta = trace.get("metadata")
+    if meta is None:
+        return "metadata missing"
+    if not isinstance(meta, dict):
+        return f"metadata is {type(meta).__name__}, expected dict"
+    if not meta.get("user_message"):
+        return "metadata.user_message missing/empty — did enrichment run?"
+    if not meta.get("assistant_response"):
+        return "metadata.assistant_response missing/empty — did enrichment run?"
+    return "unknown"
+
+
 def _load_extractor(spec: str | None) -> Callable[[dict], dict | None]:
     if not spec:
         return _default_extractor
@@ -60,8 +74,12 @@ def _load_extractor(spec: str | None) -> Callable[[dict], dict | None]:
     return getattr(module, func)
 
 
-def _parse_from(value: str | None, default_hours: int = 6) -> str:
-    """Return an ISO-8601 lower-bound timestamp, defaulting to N hours ago."""
+def _parse_from(value: str | None, default_hours: int = 24) -> str:
+    """Return an ISO-8601 lower-bound timestamp, defaulting to N hours ago.
+
+    Default raised from 6h → 24h so re-runs minutes apart don't silently drop
+    the earliest traces when wall-clock slides past their start_time.
+    """
     if not value:
         return (datetime.now(timezone.utc) - timedelta(hours=default_hours)).strftime(
             "%Y-%m-%dT%H:%M:%S.000Z"
@@ -90,7 +108,7 @@ def main(
     from_time: str | None = typer.Option(
         None,
         "--from",
-        help="ISO time lower bound. Defaults to 6h ago.",
+        help="ISO time lower bound. Defaults to 24h ago.",
     ),
     extractor: str | None = typer.Option(
         None,
@@ -128,30 +146,44 @@ def main(
         f"from={from_iso} (of {len(traces)} scanned)"
     )
     if not matched:
-        # Help diagnose: show what tags actually exist in the window.
-        found_tags = sorted({tag for t in traces for tag in (t.get("tags") or [])})
-        if found_tags:
-            console.print(f"[yellow]tags found in window: {found_tags}[/yellow]")
+        # Differentiate: empty window vs window has traces but none with our tag.
+        if not traces:
+            console.print(f"[yellow]no traces in window since {from_iso}[/yellow]")
             console.print(
-                "[yellow]hint: re-run cli.py run to re-tag, or widen --from[/yellow]"
+                "[yellow]hint: --from may be set after edd run; widen it, "
+                "or re-run edd run if the batch is stale[/yellow]"
             )
         else:
-            console.print("[yellow]no tags found on any trace in this window[/yellow]")
+            found_tags = sorted({tag for t in traces for tag in (t.get("tags") or [])})
             console.print(
-                "[yellow]hint: cli.py run may not have tagged traces — check batch_update_traces[/yellow]"
+                f"[yellow]{len(traces)} traces in window but none tagged "
+                f"`{branch_tag}`[/yellow]"
+            )
+            console.print(f"[yellow]tags actually present: {found_tags}[/yellow]")
+            console.print(
+                "[yellow]hint: confirm `branch_tag` in .edd/session.json matches "
+                "what edd run stamped, or re-run edd run[/yellow]"
             )
         raise typer.Exit(code=1)
 
     items: list[dict] = []
-    dropped = 0
+    drop_reasons: list[tuple[str, str]] = []
+    is_default_extractor = extractor is None
     for tr in matched:
         item = extractor_fn(tr)
         if not item:
-            dropped += 1
+            reason = (
+                _default_drop_reason(tr)
+                if is_default_extractor
+                else "custom extractor returned None"
+            )
+            drop_reasons.append((tr["id"], reason))
             continue
         item["id"] = tr["id"]  # stable: same trace → same item id → idempotent upsert
         items.append(item)
-    console.print(f"extracted {len(items)} items, dropped {dropped}")
+    console.print(f"extracted {len(items)} items, dropped {len(drop_reasons)}")
+    for trace_id, reason in drop_reasons:
+        console.print(f"[yellow]  dropped {trace_id}: {reason}[/yellow]")
 
     if dry_run:
         sample = items[:2]
