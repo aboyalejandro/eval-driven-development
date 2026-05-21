@@ -1,9 +1,9 @@
 """Opik REST wrapper — narrow surface, endpoints documented in scripts/shared/CLAUDE.md."""
 
 import logging
-import uuid
 
 import httpx
+from fastuuid import uuid7
 
 from shared.settings import settings
 
@@ -252,7 +252,7 @@ class OpikClient:
         existing = self.get_dataset_id(name)
         if existing:
             return existing
-        body = {"id": str(uuid.uuid7()), "name": name}
+        body = {"id": str(uuid7()), "name": name}
         if description:
             body["description"] = description
         if project_name:
@@ -270,7 +270,7 @@ class OpikClient:
         wrapped = []
         for it in items:
             it = dict(it)
-            item_id = it.pop("id", None) or str(uuid.uuid7())
+            item_id = it.pop("id", None) or str(uuid7())
             wrapped.append({"id": item_id, "source": "manual", "data": it})
         self._request(
             "PUT",

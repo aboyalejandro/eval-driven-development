@@ -46,7 +46,7 @@ for e in project_evs:
     print("  prompt:", ((e.get("code") or {}).get("prompt") or "")[:300])
 ```
 
-For each derived dimension, **read both the existing eval's name and its prompt** — name similarity alone is misleading (`grounding` vs `article-grounding` may or may not score the same thing). Match when:
+For each derived dimension, **read both the existing eval's name and its prompt** — name similarity alone is misleading (`grounding` vs `ticket-grounding` may or may not score the same thing). Match when:
 
 - the existing rubric scores the same promise (compare against the dimension's success/failure criteria), and
 - its variable paths align with what enrichment populates (`metadata.*`).
@@ -103,11 +103,29 @@ Re-listing via `c.get_evaluators()` should now show every dimension from the pla
 
 Append to `.edd/evaluator-plan.md` which trace paths each judge expects. This is what `_local/enrich_traces_<sdk>.py` must populate — `edd:run` reads this file to know whether enrichment is needed.
 
+## Step 6 — Cache evaluator state to `.edd/evaluators.json`
+
+After Step 4 lands, dump the current set of judge names into a local cache file so the `edd:edd` router (and downstream skills) can answer "do all required evaluators exist?" without a live Opik call. Avoids the foot-gun where Phase A can't self-verify because the Opik MCP server has no `list-evaluators` endpoint.
+
+```python
+import json, sys
+sys.path.insert(0, 'scripts')
+from pathlib import Path
+from shared.opik_client import OpikClient
+
+names = OpikClient().list_evaluator_names()  # for the project in .env
+Path(".edd").mkdir(exist_ok=True)
+Path(".edd/evaluators.json").write_text(json.dumps({"names": names}, indent=2))
+```
+
+Refresh this file whenever judges are created/renamed/deleted. The router treats it as advisory: if the file is missing or stale, it falls back to a live `list_evaluator_names()` call.
+
 ## Outputs
 
 | File | Purpose |
 |---|---|
 | `.edd/evaluator-plan.md` | Dimension → promise mapping, REUSE/CREATE marks, variable paths |
+| `.edd/evaluators.json` | Cached set of evaluator names — read by `edd:edd` router for Phase A |
 | `_local/create_evaluators.py` | Idempotent script that creates missing judges in Opik |
 | Opik project | Judges live here, manual-trigger mode |
 

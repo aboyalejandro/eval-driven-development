@@ -67,14 +67,14 @@ things a real user would actually ask.
 **What this means in practice:**
 
 - Don't default to the most basic, polished version of each question ("How are
-  my articles doing?" → the agent handles this easily). Push harder: ask with
+  my tickets doing?" → the agent handles this easily). Push harder: ask with
   ambiguous phrasing, incomplete context, or in a multi-turn session where the
   context shifts mid-conversation.
-- Don't manufacture impossible edge cases either. "Analyze my articles from
+- Don't manufacture impossible edge cases either. "Analyze tickets opened in
   the year 1247" is a waste of a dataset slot — no real user asks this.
 - Use the tension between the agent's stated capabilities and realistic user
-  confusion. A user might ask "what are my top posts?" instead of the exact
-  trigger phrase — does the skill still activate?
+  confusion. A user might ask "what's blowing up in support today?" instead of
+  the exact trigger phrase — does the skill still activate?
 - Include scenarios where the agent SHOULD fail gracefully: out-of-scope asks,
   data that doesn't exist, ambiguous requests that need clarification. These
   validate the agent's guardrails, not just its happy-path behavior.
@@ -103,7 +103,7 @@ Start at 10–20 items for the first dry run. Ramp once the recipe works.
 `edd-build` keeps an item if:
 
 1. The trace carries the `--branch-tag` (set by `edd run` as
-   `sim-<branch>`).
+   `<branch>`).
 2. The trace start time is within `--from`.
 3. The extractor returns a dict (default extractor drops empty
    user/assistant strings).

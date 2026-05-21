@@ -1,6 +1,6 @@
 ---
 name: experiment
-description: Promote sim-tagged traces into a durable Opik dataset + experiment with a UI scorecard. Outer loop of the eval pipeline. Use when the score must outlive the branch — cross-time comparison, reviewer handoff. Invoke as `edd:experiment` or when the user says "build dataset", "run experiment", "scoreboard in Opik UI", "outer loop".
+description: Promote branch-tagged traces into a durable Opik dataset + experiment with a UI scorecard. Outer loop of the eval pipeline. Use when the score must outlive the branch — cross-time comparison, reviewer handoff. Invoke as `edd:experiment` or when the user says "build dataset", "run experiment", "scoreboard in Opik UI", "outer loop".
 ---
 
 # edd:experiment — dataset → experiment → inspect
@@ -9,7 +9,7 @@ Mode 2 Phase 2 of the eval pipeline. Promotes the inner-loop score into a durabl
 
 ## Preconditions
 
-- `.edd/session.json` has `project` and `branch_tag` (`sim-<git-branch>`)
+- `.edd/session.json` has `project` and `branch_tag` (`<git-branch>`)
 - `.edd/evaluator-plan.md` exists ([`edd:scope-evals`](../scope-evals/SKILL.md))
 - **Smoke-judge-check passed** in [`edd:run`](../run/SKILL.md) — every judge in the plan landed at least one score on the 3–5 trace sample. This is a harness probe, not a green score-table (Mode 2 doesn't have one). If anything is silent, fix it before scaling.
 - Sim batch tagged in the last few hours (re-run `edd:run` if stale)
@@ -48,7 +48,7 @@ edd-build \
   --project <opik-project> \
   --dataset-name <dataset_name> \
   --description "<one-line summary — topic + hypothesis>" \
-  --branch-tag sim-$(git rev-parse --abbrev-ref HEAD) \
+  --branch-tag $(git rev-parse --abbrev-ref HEAD) \
   --from "$(date -u -v-6H +%Y-%m-%dT%H:%M:%SZ)" \
   [--tag <extra-tag>] \
   [--extractor _local.my_extractor:extract] \
@@ -59,7 +59,7 @@ edd-build \
 
 Default extractor reads `metadata.user_message` + `metadata.assistant_response`. Supply `--extractor module:function` if your runtime emits trace paths that differ.
 
-**Tags auto-applied:** `--branch-tag` + any `--tag` you pass. Branch name = topic = tag — `sim-<topic>` is the single identity across traces, dataset, and experiment. Mode and aggression go in `--description`. Branch-tag warning prints if it references `main`/`master` — pass `--allow-main` to silence.
+**Tags auto-applied:** `--branch-tag` + any `--tag` you pass. Branch name = topic = tag — `<topic>` is the single identity across traces, dataset, and experiment. Mode and aggression go in `--description`. Branch-tag warning prints if it references `main`/`master` — pass `--allow-main` to silence.
 
 ## Phase D.5 — Expand for coverage (gate before Phase E)
 
@@ -77,7 +77,7 @@ edd-run \
   --dataset-name <dataset_name> \
   --evaluator "<schema-name-a>,<schema-name-b>" \
   --description "<hypothesis — what changed and what we expect>" \
-  --branch-tag sim-$(git rev-parse --abbrev-ref HEAD) \
+  --branch-tag $(git rev-parse --abbrev-ref HEAD) \
   [--tag <extra-tag>] \
   [--score-timeout 300] \
   [--dry-run]

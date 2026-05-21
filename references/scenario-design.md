@@ -17,12 +17,12 @@ Scenarios test promises, not surfaces. Read `agent-analysis.md` and `evaluator-s
 This distinction controls what you hardcode vs what Claude generates:
 
 **Intent** — the promise being tested. Stable, comes from the promise inventory.
-> "A user asks for article performance data — agent should fetch and cite real metrics."
+> "A user asks for ticket resolution data — agent should fetch and cite real metrics."
 
 **Instance** — a concrete message that exercises the intent. Generated, varied.
-> "How are my latest articles performing?"
-> "Which article got the most engagement last month?"
-> "Tell me what's working in my recent posts."
+> "How are my recent tickets resolving?"
+> "Which ticket had the longest open time last month?"
+> "Tell me which support themes are recurring this week."
 
 Keep intents in `regressions.txt`. Generate instances on the fly from those intents. Running three instances of the same intent catches phrasing brittleness that a single scenario misses.
 
@@ -47,25 +47,55 @@ One intent per row. Don't add intents for promises the diff doesn't touch.
 One intent per line in the file passed to `edd run`. Plain text or JSON.
 
 ```
-# intent: article performance grounding
-How are my latest articles performing?
+# intent: ticket resolution grounding
+How are my recent tickets resolving?
 
 # intent: empty result recovery
-{"message": "Show me articles from 1995", "evaluators": ["your-recovery-evaluator"]}
+{"message": "Show me tickets opened in 1995", "evaluators": ["your-recovery-evaluator"]}
 
 # intent: skill routing (positive)
-{"message": "What's my writing voice?", "evaluators": ["your-routing-evaluator"]}
+{"message": "What's our average first-response time?", "evaluators": ["your-routing-evaluator"]}
 
-# intent: skill routing (negative — should NOT trigger brand-voice)
-{"message": "What should I write about next?", "evaluators": ["your-routing-evaluator"]}
+# intent: skill routing (negative — should NOT trigger response-time stats)
+{"message": "What should I prioritize next?", "evaluators": ["your-routing-evaluator"]}
 
 # intent: multi-turn context retention
-{"message": "Analyze my top notes", "followups": ["Now give me 3 ideas that build on those themes"], "evaluators": ["your-format-evaluator"]}
+{"message": "Analyze my top 5 open tickets", "followups": ["Now give me 3 themes that build on those"], "evaluators": ["your-format-evaluator"]}
 ```
 
 Evaluator names must match the schema names in your Opik project. Leave `evaluators` off to use the `--evaluators` flag from the CLI.
 
 Write messages as a real user would type them, not as a test engineer would. Slightly malformed phrasing and incomplete sentences catch regressions that polished prompts miss.
+
+## Blast-radius hygiene — cap result sets
+
+Unbounded asks ("show me all", "list every", "rank my tickets") let the agent fan out arbitrarily — 20–50+ tool calls per trace, span counts that time out judges, and judge prompts long enough to blow context. The agent obediently complies because the prompt told it to. Cap every list-returning scenario.
+
+This is domain-agnostic. The same anti-patterns recur across agent types:
+
+| Anti-pattern (unbounded ask)                                          | Bounded shape                                                          |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Support agent: *"Show me all open tickets for this account."*         | *"Show me the 10 most recent open tickets for this account."*          |
+| Shop assistant: *"List the products we sell in the kitchen category."* | *"List the top 5 best-selling kitchen products this month."*           |
+| Analytics agent: *"Compare every campaign's CTR against the baseline."* | *"Compare the top 5 campaigns by spend against the baseline CTR."*     |
+| Knowledge-base search: *"Find articles about onboarding."*            | *"Find the 5 most relevant articles about onboarding for new admins."* |
+| CRM agent: *"Pull all deals in stage X."*                              | *"Pull the 10 most recent deals in stage X, ranked by close date."*    |
+
+Rules:
+
+1. **Cap every list-returning query.** Default cap = 5 or 10. Broader coverage is more scenarios, not wider ones.
+2. **Anchor every range with a count or window.** `top N`, `last N`, `most recent N`, or `last N days` — pick one explicitly.
+3. **One unbounded plural per scenario is one too many.** "all", "every", "across the board" → rewrite during scope-agent.
+4. **Aggregations are bounded by definition; rankings are not.** `"average resolution time across last 10 tickets"` is fine — the aggregation caps fan-out. `"rank tickets by reopen rate"` needs an explicit `top N`.
+5. **Search scenarios need a result-count cap too.** `"find 5 X about Y"` keeps the judge prompt tractable; an uncapped search returns 50+ hits by default.
+
+If the natural phrasing of a scenario reads as unbounded, that's a signal — append `top N` or `last N` before committing it. Skill-side enforcement: `edd:scope-agent` lints scenarios for unbounded plurals before writing `regressions.txt`.
+
+## Stay inside the tool surface
+
+A scenario that asks for capability the agent doesn't have ("search every customer account for X" when the tools only scope to a single account) measures missing capability, not prompt quality — every judge scores 0, the experiment looks catastrophic, and the diagnosis is misleading.
+
+Before adding a scenario, cross-check the intent against `.edd/promises.md` (the tool/skill inventory `edd:scope-agent` writes). If no promise covers it, the scenario tests a capability gap, not a behavior gap — and that belongs in a tooling backlog, not the eval loop.
 
 ## Regression set
 

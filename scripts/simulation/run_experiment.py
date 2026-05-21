@@ -7,13 +7,52 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+import httpx
 import typer
+from fastuuid import uuid7
 from rich.console import Console
 
 from shared.opik_client import OpikClient
 from shared.session import branch_tag_warning, session_tags
 from shared.settings import settings
 from setup.results import _latest_per_judge
+
+
+def _commit_items_with_retry(
+    client: OpikClient,
+    exp_id: str,
+    bulk_items: list[dict],
+    *,
+    project_id: str,
+    dataset_name: str,
+    experiment_name: str,
+    max_attempts: int = 3,
+) -> None:
+    """Retry the bulk items write on transient 5xx (observed flaky on Opik).
+
+    Judge firing is the expensive step; this commit is cheap to retry and
+    must not re-trigger judges. Raises after `max_attempts` 5xx in a row.
+    """
+    for attempt in range(1, max_attempts + 1):
+        try:
+            client.create_experiment_items(
+                exp_id,
+                bulk_items,
+                project_id=project_id,
+                dataset_name=dataset_name,
+                experiment_name=experiment_name,
+            )
+            return
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code < 500 or attempt == max_attempts:
+                raise
+            wait = 2**attempt
+            console.print(
+                f"[yellow]commit items attempt {attempt}/{max_attempts} got "
+                f"{e.response.status_code}; retrying in {wait}s[/yellow]"
+            )
+            time.sleep(wait)
+
 
 console = Console()
 app = typer.Typer(add_completion=False)
@@ -98,6 +137,27 @@ def main(
     score_timeout: int = typer.Option(
         300, "--score-timeout", help="Seconds to wait for judge to finish per batch."
     ),
+    resume_experiment: str | None = typer.Option(
+        None,
+        "--resume-experiment",
+        help=(
+            "Experiment id from a previous run that scored successfully but "
+            "failed at the items-write step. Skips judge firing + experiment "
+            "creation and only writes the items, reading scores already on "
+            "the traces."
+        ),
+    ),
+    score_before: str | None = typer.Option(
+        None,
+        "--score-before",
+        help=(
+            "ISO timestamp upper bound for resume mode. Required when judges "
+            "may have been re-fired between the original failure and the "
+            "resume — pins score selection to the original window so newer "
+            "scores from unrelated runs don't get attached to this experiment. "
+            "Pass the line `triggered_after` from the original log."
+        ),
+    ),
     allow_main: bool = typer.Option(
         False,
         "--allow-main",
@@ -149,45 +209,85 @@ def main(
 
     shared_tags = [branch_tag, *session_tags(), *extra_tag]
 
-    triggered_after = datetime.now(timezone.utc).isoformat()
-    client.trigger_evaluation(project_id, trace_ids, [j["id"] for j in judges])
-    console.print(f"triggered {len(judges)} judges on {len(trace_ids)} traces")
+    if resume_experiment:
+        # Resume path: judges already scored, experiment row already created;
+        # only the items-write failed. Read scores back from the traces.
+        # `score_before` upper-bounds score selection so a re-fire of judges
+        # between the original failure and the resume can't attach unrelated
+        # newer scores to this experiment.
+        exp_id = resume_experiment
+        console.print(
+            f"[yellow]resuming experiment {exp_id} — skipping judge fire + "
+            "create_experiment[/yellow]"
+        )
+        if not score_before:
+            console.print(
+                "[yellow]--score-before not set; including the most recent "
+                "score per judge with no upper bound. If judges have been "
+                "re-fired since the original failure, pass --score-before "
+                "<original triggered_after> to scope back.[/yellow]"
+            )
 
-    scores_by_trace = _poll_scores(
-        client, trace_ids, set(found_names), score_timeout, triggered_after
-    )
-    landed = sum(
-        1
-        for tid in trace_ids
-        if any(s.get("name") in found_names for s in scores_by_trace.get(tid, []))
-    )
-    console.print(f"scored: {landed}/{len(trace_ids)}")
+        def _select(tid: str) -> list[dict]:
+            scores = client.get_trace_scores(tid)
+            if score_before:
+                scores = [s for s in scores if s.get("created_at", "") <= score_before]
+            return _latest_per_judge(scores)
 
-    metadata: dict[str, Any] = {
-        "evaluators": found_names,
-        "source": "edd",
-        "branch": branch_tag,
-    }
-    sample_tid = trace_ids[0]
-    spans = client.get_spans(project, sample_tid, size=10).get("content", [])
-    for sp in spans:
-        if sp.get("type") == "llm" and sp.get("model"):
-            metadata["model"] = sp["model"]
-            break
+        scores_by_trace = {tid: _select(tid) for tid in trace_ids}
+        landed = sum(
+            1
+            for tid in trace_ids
+            if any(s.get("name") in found_names for s in scores_by_trace.get(tid, []))
+        )
+        console.print(f"resumed scores: {landed}/{len(trace_ids)}")
+    else:
+        triggered_after = datetime.now(timezone.utc).isoformat()
+        client.trigger_evaluation(project_id, trace_ids, [j["id"] for j in judges])
+        console.print(
+            f"triggered {len(judges)} judges on {len(trace_ids)} traces "
+            f"(triggered_after={triggered_after})"
+        )
+        console.print(
+            f"[dim]if items-write fails, recover with: "
+            f"edd-run ... --resume-experiment <id> --score-before {triggered_after}[/dim]"
+        )
 
-    exp_id = str(uuid.uuid7())
-    client.create_experiment(
-        dataset_name=dataset_name,
-        name=exp_name,
-        experiment_id=exp_id,
-        project_id=project_id,
-        description=description,
-        metadata=metadata,
-        tags=shared_tags,
-    )
+        scores_by_trace = _poll_scores(
+            client, trace_ids, set(found_names), score_timeout, triggered_after
+        )
+        landed = sum(
+            1
+            for tid in trace_ids
+            if any(s.get("name") in found_names for s in scores_by_trace.get(tid, []))
+        )
+        console.print(f"scored: {landed}/{len(trace_ids)}")
+
+        metadata: dict[str, Any] = {
+            "evaluators": found_names,
+            "source": "edd",
+            "branch": branch_tag,
+        }
+        sample_tid = trace_ids[0]
+        spans = client.get_spans(project, sample_tid, size=10).get("content", [])
+        for sp in spans:
+            if sp.get("type") == "llm" and sp.get("model"):
+                metadata["model"] = sp["model"]
+                break
+
+        exp_id = str(uuid7())
+        client.create_experiment(
+            dataset_name=dataset_name,
+            name=exp_name,
+            experiment_id=exp_id,
+            project_id=project_id,
+            description=description,
+            metadata=metadata,
+            tags=shared_tags,
+        )
     bulk_items = [
         {
-            "id": str(uuid.uuid7()),
+            "id": str(uuid7()),
             "experiment_id": exp_id,
             "dataset_item_id": it.get("id"),
             "trace_id": _tid(it),
@@ -202,13 +302,24 @@ def main(
         for it in items
         if _tid(it)
     ]
-    client.create_experiment_items(
-        exp_id,
-        bulk_items,
-        project_id=project_id,
-        dataset_name=dataset_name,
-        experiment_name=exp_name,
-    )
+    try:
+        _commit_items_with_retry(
+            client,
+            exp_id,
+            bulk_items,
+            project_id=project_id,
+            dataset_name=dataset_name,
+            experiment_name=exp_name,
+        )
+    except httpx.HTTPStatusError as e:
+        console.print(
+            f"[red]commit items failed after retries: {e.response.status_code}[/red]"
+        )
+        console.print(
+            f"[yellow]experiment row exists at id={exp_id}; rerun with "
+            f"`--resume-experiment {exp_id}` once Opik recovers[/yellow]"
+        )
+        raise typer.Exit(code=1)
     console.print(f"[green]experiment {exp_name}[/green] (id={exp_id})")
 
     base = settings.opik_url.rstrip("/")
