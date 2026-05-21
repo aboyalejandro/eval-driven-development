@@ -1,6 +1,7 @@
 """Headless HTTP adapter for the agent under test. See scripts/setup/CLAUDE.md + PREREQUISITES.md."""
 
 import importlib
+import os
 import sys
 import uuid
 from types import SimpleNamespace

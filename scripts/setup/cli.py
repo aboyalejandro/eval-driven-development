@@ -245,7 +245,13 @@ def _opik_config_url_override() -> str | None:
 @app.command()
 def check():
     """Verify env vars + Opik reachable + agent reachable. Run before first invocation."""
-    required = ["OPIK_URL", "OPIK_API_KEY", "OPIK_OTLP_ENDPOINT", "AGENT_ENDPOINT"]
+    required = [
+        "OPIK_URL",
+        "OPIK_API_KEY",
+        "OPIK_OTLP_ENDPOINT",
+        "AGENT_ENDPOINT",
+        "EVAL_PROJECT",
+    ]
     errors = []
     for v in required:
         ok = bool(os.environ.get(v))

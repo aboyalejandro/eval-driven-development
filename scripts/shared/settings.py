@@ -23,7 +23,7 @@ class Settings:
     opik_workspace: str = field(default_factory=lambda: os.getenv("OPIK_WORKSPACE", ""))
 
     # Eval project
-    eval_project: str = field(default_factory=lambda: os.getenv("EVAL_PROJECT", "Testing"))
+    eval_project: str = field(default_factory=lambda: os.getenv("EVAL_PROJECT", ""))
 
     # Agent HTTP target
     agent_endpoint: str = field(default_factory=lambda: os.getenv("AGENT_ENDPOINT", ""))
