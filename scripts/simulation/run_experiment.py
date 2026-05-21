@@ -244,7 +244,14 @@ def main(
     else:
         triggered_after = datetime.now(timezone.utc).isoformat()
         client.trigger_evaluation(project_id, trace_ids, [j["id"] for j in judges])
-        console.print(f"triggered {len(judges)} judges on {len(trace_ids)} traces")
+        console.print(
+            f"triggered {len(judges)} judges on {len(trace_ids)} traces "
+            f"(triggered_after={triggered_after})"
+        )
+        console.print(
+            f"[dim]if items-write fails, recover with: "
+            f"edd-run ... --resume-experiment <id> --score-before {triggered_after}[/dim]"
+        )
 
         scores_by_trace = _poll_scores(
             client, trace_ids, set(found_names), score_timeout, triggered_after
