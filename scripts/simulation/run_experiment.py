@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import typer
+from fastuuid import uuid7
 from rich.console import Console
 
 from shared.opik_client import OpikClient
@@ -175,7 +176,7 @@ def main(
             metadata["model"] = sp["model"]
             break
 
-    exp_id = str(uuid.uuid7())
+    exp_id = str(uuid7())
     client.create_experiment(
         dataset_name=dataset_name,
         name=exp_name,
@@ -187,7 +188,7 @@ def main(
     )
     bulk_items = [
         {
-            "id": str(uuid.uuid7()),
+            "id": str(uuid7()),
             "experiment_id": exp_id,
             "dataset_item_id": it.get("id"),
             "trace_id": _tid(it),
