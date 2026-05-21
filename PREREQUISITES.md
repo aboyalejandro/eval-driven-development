@@ -2,6 +2,18 @@
 
 What needs to be in place before this framework produces useful scores. Read this before `agent-analysis.md` — if any of the items below are missing, the rest of the loop has nothing to consume.
 
+## Step 0 — Install the CLI
+
+The `edd`, `edd-build`, `edd-run`, and `edd-inspect` commands are an installable Python package — they don't exist on `PATH` until you install them. From a Python ≥3.11 interpreter you control:
+
+```bash
+pip install -e <edd-repo>/scripts
+which edd       # should resolve before continuing
+edd check       # preflight — see "Quick sanity check" below
+```
+
+`pip install -e` registers all four CLI entry points and makes `from shared.opik_client import OpikClient` importable from anywhere — both are required by the skills. If your `pip` is broken (`platform.mac_ver()` returns empty on macOS, etc.) or `which edd` still misses, try `pyenv` / a fresh venv before debugging further; this framework has no business reinventing your Python setup.
+
 ## Integration contract
 
 The framework makes three assumptions about the agent under test:
@@ -73,6 +85,28 @@ If the agent doesn't already trace to Opik, wire it up before running this loop.
 - Evaluator rules ("judges") defined in that project. For the inner loop, create them with `enabled=False, sampling_rate=1.0` (manual-trigger mode) — the framework fires them on exactly the traces it just ran. The `sampling_rate=1.0` is pre-staging for when you flip `enabled=True` later. See `references/evaluator-selection.md` Step 4 for when to switch to auto-sample.
 - API key with read access to traces and write access to datasets, experiments, automations
 
+#### Make sure the agent and `edd` point at the *same* Opik
+
+The opik SDK reads config from three sources, in priority order: environment variables (highest) → `~/.opik.config` → defaults. The agent runtime and `edd` are separate processes — each runs through that resolution independently.
+
+The common foot-gun: a global `~/.opik.config` from a prior self-hosted experiment pins `url_override = http://localhost:5173/api/`. The agent picks that up; `edd` reads `OPIK_URL` from its own `.env` and points at the cloud. Two backends, no overlap, `edd run` reports "no traces found" after every HTTP call returned 200.
+
+To inspect the agent's resolved config without touching `.env` files:
+
+```bash
+python -c 'from opik.config import OpikConfig; c=OpikConfig(); print(c.url_override, c.workspace)'
+```
+
+Per-process override (no file edits, no impact on other projects):
+
+```bash
+OPIK_URL_OVERRIDE=https://www.comet.com/opik/api/ \
+OPIK_WORKSPACE=<your-workspace> \
+python server.py
+```
+
+Env vars always win over `~/.opik.config`. Verify with `edd check` (it now warns when an agent test-trace doesn't land in the project `edd` is querying).
+
 ## Caveat: REST API coupling
 
 This framework is tightly coupled to Opik's REST API surface. The endpoints in use are documented in `references/opik-endpoints.md` and the wrapper lives at `scripts/opik_client.py`.
@@ -90,10 +124,10 @@ Endpoint drift is the most common failure mode after a long pause between runs. 
 Before the first sim run:
 
 ```bash
-python scripts/cli.py check
+edd check
 ```
 
-This hits the Opik project endpoint and the evaluators endpoint. If it errors:
+This hits the Opik project endpoint, the evaluators endpoint, and the agent endpoint. If it errors:
 
 - 401 → `OPIK_API_KEY` is wrong or expired
 - 404 on project → `EVAL_PROJECT` doesn't exist; create it in the Opik UI

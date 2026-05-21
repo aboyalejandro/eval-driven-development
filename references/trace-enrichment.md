@@ -51,10 +51,23 @@ def enrich_one(client, project, trace):
     # user_message = (trace_input.get("input") or [{}])[0].get("content", "")
     # assistant_response = extract_openai_response(trace.get("output") or {})
 
-    # --- Tool span extraction (varies by SDK) ---
+    # --- Tool span extraction ---
+    # Walk by both signals — `span.type == "tool"` (native instrumentors) AND
+    # `openinference.span.kind == "TOOL"` in input attributes (Agno, LangChain,
+    # OpenAI Agents SDK and other OpenInference-based instrumentors that leave
+    # `span.type = "general"`). Using only one filter loses tool data — see the
+    # `trace.has_tool_spans` anti-pattern below.
     spans = client.get_spans(project, trace_id, size=200).get("content", [])
-    tool_spans = [s for s in spans if s.get("type") == "tool"]
-    # For Agno: filter by s["input"].get("openinference.span.kind") == "TOOL"
+
+    def _is_tool_span(s: dict) -> bool:
+        if s.get("type") == "tool":
+            return True
+        attrs = s.get("input") or {}
+        if isinstance(attrs, dict) and attrs.get("openinference.span.kind") == "TOOL":
+            return True
+        return False
+
+    tool_spans = [s for s in spans if _is_tool_span(s)]
 
     tool_names = [s.get("name", "?") for s in tool_spans]
     tool_outputs = []
