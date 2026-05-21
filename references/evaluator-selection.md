@@ -8,7 +8,7 @@ Before looking at what evaluators exist, derive what dimensions matter for *this
 
 Run the `agent-analysis.md` extraction. For each row in the promise inventory, draft a candidate dimension:
 
-- Name it from the failure mode, not from a generic family: `article-grounding` not `Faithfulness`, `brand-voice-format` not `Format Compliance`.
+- Name it from the failure mode, not from a generic family: `ticket-grounding` not `Faithfulness`, `response-tone-format` not `Format Compliance`.
 - Write one sentence describing what a score of 1 looks like and one describing score 0.
 - Note whether it's deterministic (code-based judge viable) or subjective (needs LLM-as-judge).
 
@@ -68,7 +68,7 @@ Most teams start in manual-trigger mode for the inner loop, then flip `enabled=t
 
 ## Step 5 — naming hygiene
 
-Give the schema name a stable, kebab-cased form derived from the agent's promise: `article-grounding`, `brand-voice-format`, `empty-result-recovery`. Every script in this repo treats that string as a primary key — renames cascade.
+Give the schema name a stable, kebab-cased form derived from the agent's promise: `ticket-grounding`, `response-tone-format`, `empty-result-recovery`. Every script in this repo treats that string as a primary key — renames cascade.
 
 Avoid generic names (`compliance`, `quality`) — they describe nothing and make timelines unreadable.
 

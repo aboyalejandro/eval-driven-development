@@ -46,7 +46,7 @@ for e in project_evs:
     print("  prompt:", ((e.get("code") or {}).get("prompt") or "")[:300])
 ```
 
-For each derived dimension, **read both the existing eval's name and its prompt** — name similarity alone is misleading (`grounding` vs `article-grounding` may or may not score the same thing). Match when:
+For each derived dimension, **read both the existing eval's name and its prompt** — name similarity alone is misleading (`grounding` vs `ticket-grounding` may or may not score the same thing). Match when:
 
 - the existing rubric scores the same promise (compare against the dimension's success/failure criteria), and
 - its variable paths align with what enrichment populates (`metadata.*`).
