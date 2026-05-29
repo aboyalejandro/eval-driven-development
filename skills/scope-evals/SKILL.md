@@ -1,13 +1,99 @@
 ---
 name: scope-evals
-description: Configure manual-trigger judges in Opik — derive one evaluator dimension per promise, **match against existing evaluators on the account first**, generate `_local/create_evaluators.py` only for gaps, run it. Output is `.edd/evaluator-plan.md` + judges live in Opik with `enabled=False, sampling_rate=1.0` (disabled blocks auto-firing during experimentation; sampling_rate pre-staged so flipping to auto-sample is a one-field change). Invoke as `edd:scope-evals` or when the user says "set up judges", "create evaluators", "scope the evals". For *firing* judges and reading scores, see `edd:run`.
+description: Configure manual-trigger judges in Opik — derive one evaluator dimension per promise, **match against existing evaluators on the account first**, generate `_local/create_evaluators.py` only for gaps, run it. Output is `.edd/evaluator-plan.md` + judges live in Opik with `enabled=False, sampling_rate=1.0` (disabled blocks auto-firing during experimentation; sampling_rate pre-staged so flipping to auto-sample is a one-field change). Invoke as `edd:scope-evals` or when the user says "set up judges", "create evaluators", "scope the evals". **Audit mode** (no promises.md needed): invoke when user says "audit my evaluators", "check existing evals", "audit evals against fundamentals", or invokes `edd:scope-evals audit` — reads live Opik evaluators and cross-checks against eval-fundamentals.md principles. For *firing* judges and reading scores, see `edd:run`.
 ---
 
 # edd:scope-evals — evaluator dimensions + Opik judges
 
-Discovery step 2 of the eval pipeline. Reads the promise inventory, decides which judges are needed, reuses what exists, creates gaps.
+Discovery step 2 of the eval pipeline. Two modes:
 
-## Preconditions
+- **Creation mode** (default) — reads promise inventory, reuses or creates judges. Requires `.edd/promises.md`.
+- **Audit mode** — reads live evaluators, cross-checks against fundamentals. No `.edd/promises.md` needed.
+
+---
+
+## Audit mode
+
+**Triggers:** user says "audit my evaluators", "check existing evals", "audit evals against fundamentals", "what do my evals do", or invokes `edd:scope-evals audit`.
+
+Reads what's already in Opik and audits it — no creation, no promises.md.
+
+### Step A1 — Pull evaluators from the project
+
+```python
+import sys; sys.path.insert(0, 'scripts')
+from shared.opik_client import OpikClient
+import json
+
+client = OpikClient()
+project = "<opik-project>"   # from .edd/session.json or ask the user
+
+evs = client.get_evaluators().get("content", [])
+project_evs = [e for e in evs if e.get("project_name") == project]
+
+for e in project_evs:
+    name = OpikClient.evaluator_schema_name(e)
+    kind = e.get("type", "unknown")
+    enabled = e.get("enabled")
+    sampling = e.get("sampling_rate")
+    rubric = ((e.get("code") or {}).get("messages") or [{}])[0].get("content", "")[:400]
+    variables = (e.get("code") or {}).get("variables") or (e.get("code") or {}).get("arguments") or {}
+    print(f"\n--- {name} ({kind}) enabled={enabled} sampling={sampling} ---")
+    print(f"  variables: {variables}")
+    print(f"  rubric[:400]: {rubric}")
+```
+
+### Step A2 — Audit each evaluator against fundamentals
+
+For each evaluator run these checks (from [`references/eval-fundamentals.md`](../../references/eval-fundamentals.md)):
+
+| # | Check | PASS | WARN | FLAG |
+|---|---|---|---|---|
+| 1 | **Right grader type** | dimension is subjective → `llm_as_judge`; structural → `user_defined_metric_python` | hard to tell from rubric alone | structural dim using LLM judge (candidate for `scripts/metrics/` conversion) |
+| 2 | **Name from failure mode** | kebab-case from agent's promise (`ticket-grounding`) | generic but specific (`format-check`) | taxonomy term (`Faithfulness`, `Quality`, `Compliance`) |
+| 3 | **Binary scoring explicit** | rubric explicitly states what 0 means (failed OR not applicable) | rubric implies binary but doesn't state it | no scoring convention stated; half-credit or vague |
+| 4 | **Reads from `metadata.*`** | variables path is `metadata.user_message` / `metadata.assistant_response` | mixed paths | reads raw SDK paths (`input.input.value` without enrichment note) |
+| 5 | **Staging mode** | `enabled=False, sampling_rate=1.0` (manual-trigger) or `enabled=True` intentionally | enabled=True but not documented as intentional | `sampling_rate=0` (will never auto-fire even when enabled) |
+| 6 | **Calibration signal** | rubric mentions TPR/TNR or calibration notes exist in `.edd/evaluator-plan.md` | no mention but rubric is concrete | rubric is vague / circular (`"good response"`) |
+| 7 | **Different model from agent** | judge model differs from agent's runtime model | same model family but different tier | identical model string (shares blind spots) |
+
+### Step A3 — Write `.edd/evaluator-audit.md`
+
+```markdown
+# Evaluator audit — <project> (<date>)
+
+## Summary
+
+N total evaluators: M code metrics, K LLM judges.
+P with FLAG findings, Q with WARN findings.
+
+## Per-evaluator findings
+
+### <evaluator-name> (<type>)
+
+| Check | Result | Note |
+|---|---|---|
+| Right grader type | PASS / WARN / FLAG | … |
+| Name from failure mode | … | … |
+| Binary scoring explicit | … | … |
+| Reads from metadata.* | … | … |
+| Staging mode | … | … |
+| Calibration signal | … | … |
+| Different model | … | … |
+
+…
+
+## Recommendations
+
+- FLAG: <evaluator> — <one-line fix>
+- WARN: …
+```
+
+Output path: `.edd/evaluator-audit.md`. Show the summary table to the user inline; full findings are in the file.
+
+---
+
+## Preconditions (creation mode)
 
 - `.edd/promises.md` exists (run [`edd:scope-agent`](../scope-agent/SKILL.md) first)
 - Opik creds in `.env`: `OPIK_URL`, `OPIK_API_KEY`
