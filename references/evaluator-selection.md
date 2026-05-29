@@ -45,14 +45,14 @@ One dimension per row. If the diff touches more than one, pick the dominant one 
 
 ## Step 3 — build if missing
 
-If no existing evaluator fits, build one before continuing:
+If no existing evaluator fits, build one before continuing. This is the grader-type choice from [`eval-fundamentals.md`](eval-fundamentals.md) ("deterministic where possible, LLM where necessary") made concrete:
 
-| Method | When |
-|---|---|
-| Calibrated judge (LLM-as-judge + human labels) | Subjective dimensions — need TPR/TNR alignment before trusting the score |
-| Code-based judge | Deterministic checks: regex, JSON schema validation, presence of a tool call in the trace |
+| Method | When | How to build |
+|---|---|---|
+| Code-based metric | Deterministic checks: regex, JSON schema validation, presence of a tool call in the trace | `scripts/metrics/` — write a `BaseMetric` subclass, register via `edd-metrics`. Free, instant, no calibration. |
+| Calibrated judge (LLM-as-judge + human labels) | Subjective dimensions — need TPR/TNR alignment before trusting the score | `scope-evals` → `_local/create_evaluators.py` |
 
-Don't run experiments against an uncalibrated LLM judge — you'll chase noise. Calibrate on 20–30 labeled trace pairs before treating the score as signal.
+Prefer a code-based metric whenever the dimension is structural — it's cheaper, reproducible, and needs no calibration. Reach for an LLM judge only when the dimension genuinely requires interpretation. Don't run experiments against an uncalibrated LLM judge — you'll chase noise. Calibrate on 20–30 labeled trace pairs before treating the score as signal.
 
 ## Step 4 — staging readiness
 
@@ -81,6 +81,7 @@ Avoid generic names (`compliance`, `quality`) — they describe nothing and make
 
 ## See also
 
+- [`eval-fundamentals.md`](eval-fundamentals.md) — the three grader types + the deterministic-first rule this tree applies
 - [`agent-analysis.md`](agent-analysis.md) — promise inventory feeds dimensions
 - [`failure-modes.md`](failure-modes.md) — judge biases to watch for when calibrating
 - [`score-reading.md`](score-reading.md) — score-table mechanics + binary scoring convention

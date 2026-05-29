@@ -6,6 +6,7 @@ Standalone markdown files. **Decision aids, not narrative docs** — each skill 
 
 | File | When to load | Used by skill |
 |---|---|---|
+| `eval-fundamentals.md` | grounding an eval-design call — grader-type choice, scoring convention, capability-vs-regression, why-read-transcripts | all skills (conceptual base) |
 | `agent-analysis.md` | extracting promise inventory from agent source | [`edd:scope-agent`](../skills/scope-agent/SKILL.md) |
 | `evaluator-selection.md` | mapping promises → judge dimensions; picking the target evaluator for an experiment | [`edd:scope-evals`](../skills/scope-evals/SKILL.md), [`edd:experiment`](../skills/experiment/SKILL.md) |
 | `scenario-design.md` | drafting `scenarios.txt` at a chosen aggression level | [`edd:scope-agent`](../skills/scope-agent/SKILL.md), [`edd:run`](../skills/run/SKILL.md) |
@@ -34,6 +35,7 @@ There is no canonical order — load the file that matches the question you have
 
 | Question | Load |
 |---|---|
+| "Code metric or LLM judge for this dimension? / why this scoring convention?" | `eval-fundamentals.md` |
 | "What does this agent actually promise?" | `agent-analysis.md` |
 | "Which judge applies to this promise?" | `evaluator-selection.md` |
 | "Why is this judge red? / is this red real?" | `failure-modes.md` (then `score-reading.md` for table mechanics) |
