@@ -19,6 +19,7 @@ edd         = "setup.cli:app"
 edd-build   = "simulation.build_dataset:app"
 edd-run     = "simulation.run_experiment:app"
 edd-inspect = "simulation.inspect_experiment:app"
+edd-metrics = "metrics.register:main"
 
 [build-system]
 requires = ["setuptools"]

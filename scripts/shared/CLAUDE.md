@@ -16,7 +16,7 @@ Single source of truth for Opik API access and environment-variable reads. Both 
 Methods exist for **every** endpoint the framework needs and nothing else. Categories:
 
 - **Traces** — `search_traces`, `batch_tag`, `get_feedback_scores`, `get_spans` (for run-time model lookup)
-- **Evaluators** — `get_evaluators` (list automation rules), `trigger_evaluator` (manual run)
+- **Evaluators** — `get_evaluators` (list rules), `create_evaluator` (LLM judge), `create_python_metric` (deterministic code metric), `update_evaluator` (PATCH — note: does not replace `code` field), `trigger_evaluation` (manual run)
 - **Datasets** — `get_dataset_by_name`, `upsert_dataset_items`, `get_dataset_items_with_experiment_outputs`
 - **Experiments** — `create_experiment` (pre-minted id), `add_experiment_items`
 

@@ -57,6 +57,7 @@ Base path is always `/v1/private/...`. Auth is the Bearer/raw token in the
 |---|---|---|
 | GET | `/automations/evaluators?size=500` | List rules; `code.schema[0].name` is the canonical schema name |
 | POST | `/automations/evaluators` | Create rule; type `llm_as_judge` or `user_defined_metric_python` |
+| PATCH | `/automations/evaluators/{id}` | Update rule metadata. **Does NOT replace `code` field** — Opik ignores it on PATCH. To swap metric source: `delete_evaluators_by_name` + re-POST. |
 | DELETE | `/automations/evaluator-rules` (batch) | Delete by ids list |
 | GET | `/automations/evaluators/{id}/logs` | Per-rule execution logs — **first place to look when scores never land** |
 | POST | `/manual-evaluation/traces` | Body: `{project_id, entity_ids, rule_ids, entity_type: "trace"}` — async writeback |
