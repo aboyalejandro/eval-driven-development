@@ -1,8 +1,15 @@
 # Eval fundamentals — the theory this framework operationalizes
 
-Distilled from Anthropic, **["Demystifying evals for AI agents"](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents)** (published 2026-01-09, retrieved 2026-05-29). This is the *why* behind the pipeline. Load it when you need to justify a grader choice, a scoring convention, or a scenario-design call — not for mechanics (those live in the per-step references).
+Two canonical sources ground this framework:
 
-The article's fundamentals are constant across agent types; this framework is one concrete operationalization of them. Where a concept maps to a framework artifact, the mapping is called out inline.
+1. Anthropic, **["Demystifying evals for AI agents"](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents)** (2026-01-09) — agent eval theory, grader types, capability vs regression, non-determinism.
+2. Anthropic, **["Develop tests"](https://platform.claude.com/docs/en/test-and-evaluate/develop-tests)** — implementation guide: grading patterns, test case construction, automation principles.
+
+This file is a decision-aid summary of their core principles. Load it when you need to justify a grader choice, scoring convention, or scenario-design call. The per-step references (`evaluator-selection.md`, `scenario-design.md`, etc.) cover mechanics.
+
+> **Deeper dive available.** If you need implementation-level detail — rubric templates, grading code examples, Likert prompts, test-case generation techniques — say "show me grading patterns" and load the full [Develop tests](https://platform.claude.com/docs/en/test-and-evaluate/develop-tests) guide.
+
+The fundamentals below are constant across agent types; this framework is one concrete operationalization of them.
 
 ## What an eval is
 
@@ -62,6 +69,21 @@ Agent behavior varies run to run; each task has its own success rate. Two metric
 ## Where automated evals fit
 
 Automated evals are one method, not the whole picture. A complete view also uses **production monitoring** (real behavior, but reactive and no ground truth), **A/B testing** (real outcomes, but slow and deploy-gated), **user feedback** (real signal, but sparse/noisy), and **systematic human review**. Automated evals trade up-front + maintenance cost for fast, reproducible, pre-deployment iteration — and can create false confidence if they drift from real usage. Keep them honest by sourcing from real failures and reading transcripts.
+
+## Grading implementation patterns (quick-ref)
+
+Four patterns cover most cases. Full examples at the [Develop tests](https://platform.claude.com/docs/en/test-and-evaluate/develop-tests) guide.
+
+| Pattern | Use when | This framework |
+|---|---|---|
+| **Exact / regex match** | Categorical output (classification, structured field) | `scripts/metrics/` code metric |
+| **LLM binary** (correct / incorrect) | Subjective with a clear rubric; grade vs a golden answer | `create_evaluator` → binary `0/1` |
+| **LLM Likert** (1–5 scale) | Tone, quality, empathy — needs a spectrum | `create_evaluator` with 1–5 schema |
+| **String contains / JSON schema** | Format / structure checks | `FormatCompliance`, `ToolCallPresence` |
+
+Two rules from the implementation guide:
+- **Evaluate with a different model than the one under test.** If the agent runs on Sonnet 4.6, consider a lighter model or a code metric for structural dimensions — don't let the judge share the agent's blind spots.
+- **Generate test cases from a small baseline.** Claude can expand 5 seed items into 50 varied instances — useful for `scenarios.txt` and dataset seeding. Ask for the generation pattern if needed.
 
 ## See also
 

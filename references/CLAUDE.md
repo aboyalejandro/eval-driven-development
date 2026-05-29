@@ -35,7 +35,7 @@ There is no canonical order — load the file that matches the question you have
 
 | Question | Load |
 |---|---|
-| "Code metric or LLM judge for this dimension? / why this scoring convention?" | `eval-fundamentals.md` |
+| "Code metric or LLM judge? / which grading pattern fits? / why this scoring convention?" | `eval-fundamentals.md` (for deep dive on implementation, ask for the grading-patterns section) |
 | "What does this agent actually promise?" | `agent-analysis.md` |
 | "Which judge applies to this promise?" | `evaluator-selection.md` |
 | "Why is this judge red? / is this red real?" | `failure-modes.md` (then `score-reading.md` for table mechanics) |
