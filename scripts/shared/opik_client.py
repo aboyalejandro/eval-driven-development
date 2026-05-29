@@ -145,7 +145,8 @@ class OpikClient:
         """Delete evaluator rules by schema name. Returns count deleted."""
         evs = self.get_evaluators().get("content", [])
         ids = [
-            e["id"] for e in evs
+            e["id"]
+            for e in evs
             if e.get("project_name") == project
             and self.evaluator_schema_name(e) in names
         ]
@@ -190,7 +191,12 @@ class OpikClient:
                     {"name": name, "type": "INTEGER", "description": description}
                 ],
                 "messages": [
-                    {"role": "SYSTEM", "content": rubric.strip(), "string_content": True, "structured_content": False},
+                    {
+                        "role": "SYSTEM",
+                        "content": rubric.strip(),
+                        "string_content": True,
+                        "structured_content": False,
+                    },
                     {
                         "role": "USER",
                         "content": (
@@ -212,6 +218,50 @@ class OpikClient:
             },
         }
         return self._request("POST", "/v1/private/automations/evaluators", json=body)
+
+    def create_python_metric(
+        self,
+        name: str,
+        code: str,
+        project_name: str,
+        arguments: dict[str, str] | None = None,
+        enabled: bool = False,
+        sampling_rate: float = 1.0,
+    ) -> dict:
+        """Create a deterministic code-based metric rule. Idempotent — skips if name exists."""
+        evs = self.get_evaluators().get("content", [])
+        project_evs = [e for e in evs if e.get("project_name") == project_name]
+        if name in [self.evaluator_schema_name(e) for e in project_evs]:
+            return {"skipped": True, "name": name}
+        project_id = self.get_project_id(project_name)
+        if arguments is None:
+            arguments = {
+                "input": "input.input.value",
+                "output": "output.output.value",
+                "metadata": "metadata",
+            }
+        return self._request(
+            "POST",
+            "/v1/private/automations/evaluators",
+            json={
+                "name": name,
+                "type": "user_defined_metric_python",
+                "project_id": project_id,
+                "enabled": enabled,
+                "sampling_rate": sampling_rate,
+                "code": {"metric": code, "arguments": arguments},
+            },
+        )
+
+    def update_evaluator(self, rule_id: str, payload: dict) -> dict:
+        """PATCH an existing evaluator rule.
+
+        PATCH does NOT replace the `code` field — Opik ignores it on updates.
+        To swap metric source: delete_evaluators_by_name + re-POST via create_python_metric.
+        """
+        return self._request(
+            "PATCH", f"/v1/private/automations/evaluators/{rule_id}", json=payload
+        )
 
     def trigger_evaluation(
         self, project_id: str, trace_ids: list[str], rule_ids: list[str]
