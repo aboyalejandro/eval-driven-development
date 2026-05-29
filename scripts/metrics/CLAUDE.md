@@ -43,7 +43,7 @@ class MyMetric(base_metric.BaseMetric):
     OPIK_ARGUMENTS = {"input": "input.message", "output": "output.text", "metadata": "metadata"}
 ```
 
-Default mapping (OpenInference/Agno traces): `input.input.value`, `output.output.value`, `metadata`.
+Default mapping (OpenInference-instrumented traces): `input.input.value`, `output.output.value`, `metadata`. Other SDKs nest differently — set `OPIK_ARGUMENTS` to match your trace shape (see `references/trace-inspection.md`).
 
 ## Register flow
 
