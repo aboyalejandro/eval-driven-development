@@ -37,6 +37,25 @@ def test_tool_call_presence_required_tool_present():
     assert m.score("ask", output).value == 1
 
 
+def test_tool_call_presence_metadata_tools_called():
+    # Enriched traces carry tools_called in metadata — should take priority over output parsing.
+    m = ToolCallPresence()
+    assert (
+        m.score("ask", "no tools here", metadata={"tools_called": ["search"]}).value
+        == 1
+    )
+
+
+def test_tool_call_presence_metadata_required_tool():
+    m = ToolCallPresence(required_tool="search")
+    assert m.score("ask", None, metadata={"tools_called": ["search"]}).value == 1
+
+
+def test_tool_call_presence_metadata_required_tool_missing():
+    m = ToolCallPresence(required_tool="search")
+    assert m.score("ask", None, metadata={"tools_called": ["lookup"]}).value == 0
+
+
 # --- FormatCompliance ---
 
 

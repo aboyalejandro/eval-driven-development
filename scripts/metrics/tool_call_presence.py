@@ -41,7 +41,12 @@ class ToolCallPresence(base_metric.BaseMetric):
         metadata: dict | None = None,
         **ignored_kwargs: Any,
     ) -> score_result.ScoreResult:
-        tools = _extract_tool_names(output)
+        # Enriched traces populate metadata.tools_called — prefer that over output parsing.
+        if metadata and metadata.get("tools_called"):
+            raw = metadata["tools_called"]
+            tools = raw if isinstance(raw, list) else [raw]
+        else:
+            tools = _extract_tool_names(output)
         if not tools:
             return score_result.ScoreResult(
                 name=self.name, value=0, reason="No tool calls found in output."

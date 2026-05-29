@@ -56,7 +56,14 @@ def main() -> int:
             print(f"  code.metric    = <{len(payload['code']['metric'])} bytes>")
             continue
         if action == "PATCH":
+            # PATCH updates enabled/sampling_rate but Opik ignores the `code` field.
+            # To replace metric source: edd-metrics will skip code update — run
+            # OpikClient.delete_evaluators_by_name then re-run edd-metrics to force re-POST.
             client.update_evaluator(existing_by_name[name], payload)
+            print(
+                f"PATCH {name} -> ok (note: code field not updated — delete + re-POST to swap source)"
+            )
+            continue
         else:
             client._request("POST", "/v1/private/automations/evaluators", json=payload)
         print(f"{action} {name} -> ok")
