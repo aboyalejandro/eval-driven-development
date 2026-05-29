@@ -58,9 +58,15 @@ Mark the dimension in `.edd/evaluator-plan.md`:
 
 When unsure between REUSE and CREATE, default to REUSE if the existing rubric is within shouting distance of the promise. Recalibrating one judge is cheaper than maintaining two near-duplicates.
 
-## Step 3 — Generate `_local/create_evaluators.py`
+## Step 3 — Build missing evaluators
 
-One block per **CREATE** dimension. Template:
+**Deterministic dimension?** → code metric, not an LLM judge. Write a `BaseMetric` subclass in `scripts/metrics/`, add it to `ALL_METRICS`, register with `edd-metrics --project <name>`. See [`scripts/metrics/CLAUDE.md`](../../scripts/metrics/CLAUDE.md). Skip the template below for these.
+
+**Subjective dimension?** → LLM judge via the template below.
+
+### Generate `_local/create_evaluators.py` (LLM judges only)
+
+One block per **CREATE** subjective dimension. Template:
 
 ```python
 from shared.opik_client import OpikClient

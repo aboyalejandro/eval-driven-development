@@ -9,7 +9,8 @@ Python package that backs the `edd`, `edd-build`, `edd-run`, `edd-inspect` CLIs.
 | [`setup/`](setup/CLAUDE.md) | yes | Inner loop — emit scenarios, tag traces, trigger judges, render score table |
 | [`simulation/`](simulation/CLAUDE.md) | yes | Outer loop — build datasets, run experiments, inspect failures |
 | [`shared/`](shared/CLAUDE.md) | yes | Opik REST client + settings singleton |
-| `pyproject.toml` | — | Console scripts: `edd`, `edd-build`, `edd-run`, `edd-inspect` |
+| [`metrics/`](metrics/CLAUDE.md) | yes | Deterministic code-based metrics — `BaseMetric` subclasses registered as `user_defined_metric_python` rules |
+| `pyproject.toml` | — | Console scripts: `edd`, `edd-build`, `edd-run`, `edd-inspect`, `edd-metrics` |
 
 ## Install + activate
 
@@ -29,6 +30,7 @@ All `edd*` commands assume the venv is active and run from **repo root**.
 | `edd-build` | [`simulation/build_dataset.py`](simulation/CLAUDE.md) |
 | `edd-run` | [`simulation/run_experiment.py`](simulation/CLAUDE.md) |
 | `edd-inspect` | [`simulation/inspect_experiment.py`](simulation/CLAUDE.md) |
+| `edd-metrics` | [`metrics/register.py`](metrics/CLAUDE.md) — register/update code metrics on an Opik project |
 
 ## Module boundaries
 

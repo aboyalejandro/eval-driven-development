@@ -45,14 +45,14 @@ One dimension per row. If the diff touches more than one, pick the dominant one 
 
 ## Step 3 — build if missing
 
-If no existing evaluator fits, build one before continuing:
+If no existing evaluator fits, build one before continuing. Pick the type from the dimension's nature — deterministic first:
 
-| Method | When |
-|---|---|
-| Calibrated judge (LLM-as-judge + human labels) | Subjective dimensions — need TPR/TNR alignment before trusting the score |
-| Code-based judge | Deterministic checks: regex, JSON schema validation, presence of a tool call in the trace |
+| Method | When | How to build |
+|---|---|---|
+| Code-based metric | Deterministic: regex, JSON shape, tool-call presence, tag leakage | `scripts/metrics/` — write a `BaseMetric` subclass, add to `ALL_METRICS`, register via `edd-metrics --project <name>`. Free, instant, no calibration needed. |
+| Calibrated judge (LLM-as-judge + human labels) | Subjective dimensions — need TPR/TNR alignment before trusting the score | `scope-evals` → `_local/create_evaluators.py` (LLM judge template) |
 
-Don't run experiments against an uncalibrated LLM judge — you'll chase noise. Calibrate on 20–30 labeled trace pairs before treating the score as signal.
+Prefer code metrics whenever the dimension is structural — they're cheaper, reproducible, and can be unit-tested offline (`pytest scripts/metrics/tests`). Reach for an LLM judge only when the dimension requires interpretation. Don't run experiments against an uncalibrated LLM judge — you'll chase noise. Calibrate on 20–30 labeled trace pairs before treating the score as signal.
 
 ## Step 4 — staging readiness
 
