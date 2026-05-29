@@ -97,6 +97,15 @@ A scenario that asks for capability the agent doesn't have ("search every custom
 
 Before adding a scenario, cross-check the intent against `.edd/promises.md` (the tool/skill inventory `edd:scope-agent` writes). If no promise covers it, the scenario tests a capability gap, not a behavior gap — and that belongs in a tooling backlog, not the eval loop.
 
+## Capability vs regression — which file
+
+This is the article's capability-vs-regression split (see [`eval-fundamentals.md`](eval-fundamentals.md)) made concrete in two files:
+
+- **`scenarios.txt`** = capability evals. Diff-specific, higher aggression, *expected* to fail at first — they give the change a hill to climb. Regenerated per session.
+- **`regressions.txt`** = regression evals. Stable baselines that should sit at ~100% — a drop means something broke. Committed, persists across sessions.
+
+When a capability scenario goes reliably green, **graduate** it into `regressions.txt` (and raise aggression on the next set). Source new scenarios from **real failures you've seen**, not invented edge cases — production incidents make the best items. And design intents to grade the **outcome**, not a prescribed tool-call path: an intent that only passes when the agent takes one exact route is brittle and punishes valid alternatives.
+
 ## Regression set
 
 `regressions.txt` holds baseline scenario intents — one concrete instance per intent, covering the 5–8 promises that define the agent's core identity (from `agent-analysis.md`). Run it alongside every diff. Don't add to it until an evaluator has survived 2+ calibrated runs.
@@ -132,6 +141,7 @@ Mostly edge cases designed to surface harness failures. Conflicting instructions
 
 ## See also
 
+- [`eval-fundamentals.md`](eval-fundamentals.md) — capability vs regression, source-from-failures, grade-outcomes-not-paths
 - [`agent-analysis.md`](agent-analysis.md) — promises feed scenario intents
 - [`evaluator-selection.md`](evaluator-selection.md) — tag each scenario with the judge it exercises
 - [`../skills/run/SKILL.md`](../skills/run/SKILL.md) — fires scenarios at the chosen aggression level

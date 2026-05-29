@@ -81,6 +81,7 @@ Avoid generic names (`compliance`, `quality`) — they describe nothing and make
 
 ## See also
 
+- [`eval-fundamentals.md`](eval-fundamentals.md) — the three grader types + the deterministic-first rule this tree applies
 - [`agent-analysis.md`](agent-analysis.md) — promise inventory feeds dimensions
 - [`failure-modes.md`](failure-modes.md) — judge biases to watch for when calibrating
 - [`score-reading.md`](score-reading.md) — score-table mechanics + binary scoring convention

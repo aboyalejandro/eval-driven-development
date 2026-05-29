@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Conceptual foundation
+
+This framework operationalizes Anthropic's **["Demystifying evals for AI agents"](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents)**. Base eval-design judgment calls (grader choice, scoring convention, what to test) on its fundamentals — they are agent-agnostic and constant. Concept → artifact mapping:
+
+- **Regression evals** (≈100% pass, catch backsliding) → `regressions.txt`. **Capability evals** (low pass, a hill to climb) → session `scenarios.txt`.
+- **Model-based graders** (LLM-as-judge) → Opik evaluators (`scope-evals`). **Code-based graders** (deterministic, free, fast) → code metrics (`scripts/metrics/`).
+- **Grade outcomes, not paths**; combine grader types; read the transcripts; a green run isn't proof (non-determinism).
+
+Load [`references/eval-fundamentals.md`](references/eval-fundamentals.md) for the distilled *why* before making an eval-design call you can't already ground in a per-step reference.
+
 ## Sitemap
 
 Distributed CLAUDE.md docs — load the one closest to where you're working:
